@@ -1,10 +1,19 @@
 import fs from 'fs-extra'
 import path from 'path'
 import { OpenAPIV2 } from 'openapi-types'
-import { appendFile } from 'fs'
 import { compile } from 'json-schema-to-typescript'
-import SwaggerParser from 'swagger-parser'
 import prettier from 'prettier'
+
+const createSchemaObj = (
+  properties: Record<string, OpenAPIV2.SchemaObject>
+) => {
+  return {
+    type: 'object',
+    required: Object.keys(properties),
+    additionalProperties: false,
+    properties,
+  }
+}
 
 async function main() {
   // TODO: Validate spec?
@@ -20,42 +29,32 @@ async function main() {
   const schemaEntries = Object.values(spec.paths!)
     .flatMap((methods) => Object.values(methods))
     .map((method: OpenAPIV2.OperationObject) => {
-      let responses = Object.entries(method.responses)
-        .map(([status, response]) => {
-          if (!response) return null
+      // TODO: Tidy
+      const ResponseBody = createSchemaObj(
+        Object.fromEntries(
+          Object.entries(method.responses)
+            .map(([status, response]) => {
+              if (!response) return null
 
-          if ('$ref' in response) {
-            return null //TODO
-          }
+              if ('$ref' in response) {
+                return null //TODO
+              }
 
-          let { schema } = response
+              let { schema } = response
 
-          if (!schema) {
-            return null
-          }
+              if (!schema) {
+                return null
+              }
 
-          return [`${method.operationId}ResponseBody${status}`, schema]
-        })
-        .filter(Boolean)
+              return [status, schema]
+            })
+            .filter(Boolean)
+        )
+      )
 
-      const params: OpenAPIV2.SchemaObject = {
-        type: 'object',
-        required: [],
-        additionalProperties: false,
-        properties: {},
-      }
-      const query: OpenAPIV2.SchemaObject = {
-        type: 'object',
-        required: [],
-        additionalProperties: false,
-        properties: {},
-      }
-      const headers: OpenAPIV2.SchemaObject = {
-        type: 'object',
-        required: [],
-        additionalProperties: false,
-        properties: {},
-      }
+      const params = createSchemaObj({})
+      const query = createSchemaObj({})
+      const headers = createSchemaObj({})
       let body: null | OpenAPIV2.SchemaObject = null
 
       method
@@ -86,22 +85,19 @@ async function main() {
 
       // TODO: Put these in an object schema or namespace...
       // { GetUsers: { Params: ..., Query: ... }}
-      const methodSchemaObject = Object.fromEntries([
-        ['Params', params],
-        ['Query', query],
-        ['Headers', headers],
-        ['RequestBody', body ? body : { type: 'null' }], // TODO: Better type? Like `never`?
-        ...responses,
-      ])
 
       return [
         method.operationId,
-        {
-          type: 'object',
-          properties: methodSchemaObject,
-          required: Object.keys(methodSchemaObject),
-          additionalProperties: false,
-        },
+        createSchemaObj(
+          Object.fromEntries([
+            ['Params', params],
+            ['Query', query],
+            ['Headers', headers],
+            ['RequestBody', body ? body : { type: 'null' }], // TODO: Better type? Like `never`?
+            // TODO: Variable name consistency
+            ['ResponseBody', ResponseBody],
+          ])
+        ),
       ]
     })
 
@@ -109,10 +105,7 @@ async function main() {
 
   const types = await compile(
     {
-      type: 'object',
-      properties: schemaObject,
-      required: Object.keys(schemaObject),
-      additionalProperties: false,
+      ...createSchemaObj(schemaObject),
       definitions: spec.definitions,
     },
     'Requests',
