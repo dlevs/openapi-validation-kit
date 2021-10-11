@@ -30,7 +30,7 @@ async function main() {
     .flatMap((methods) => Object.values(methods))
     .map((method: OpenAPIV2.OperationObject) => {
       // TODO: Tidy
-      const ResponseBody = createSchemaObj(
+      const responseBody = createSchemaObj(
         Object.fromEntries(
           Object.entries(method.responses)
             .map(([status, response]) => {
@@ -52,9 +52,12 @@ async function main() {
         )
       )
 
-      const params = createSchemaObj({})
-      const query = createSchemaObj({})
-      const headers = createSchemaObj({})
+      const schemas = {
+        responseBody,
+        path: createSchemaObj({}),
+        query: createSchemaObj({}),
+        header: createSchemaObj({}),
+      }
       let body: null | OpenAPIV2.SchemaObject = null
 
       method
@@ -65,13 +68,8 @@ async function main() {
           }
 
           const schema =
-            param.in === 'path'
-              ? params
-              : param.in === 'query'
-              ? query
-              : param.in === 'headers'
-              ? headers
-              : null
+            (schemas as Record<string, OpenAPIV2.SchemaObject>)[param.in] ??
+            null
 
           if (schema) {
             schema.properties[param.name] = param
@@ -90,12 +88,11 @@ async function main() {
         method.operationId,
         createSchemaObj(
           Object.fromEntries([
-            ['Params', params],
-            ['Query', query],
-            ['Headers', headers],
+            ['Params', schemas.path],
+            ['Query', schemas.query],
+            ['Headers', schemas.header],
             ['RequestBody', body ? body : { type: 'null' }], // TODO: Better type? Like `never`?
-            // TODO: Variable name consistency
-            ['ResponseBody', ResponseBody],
+            ['ResponseBody', schemas.responseBody],
           ])
         ),
       ]
