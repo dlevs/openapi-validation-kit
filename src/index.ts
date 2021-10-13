@@ -32,30 +32,31 @@ async function main() {
     .flatMap((methods) => Object.values(methods))
     .map((method: OpenAPIV2.OperationObject) => {
       // TODO: Tidy
-      const responseBody = createSchemaObj(
-        Object.fromEntries(
-          Object.entries(method.responses)
-            .map(([status, response]) => {
-              if (!response) return null
+      const responseBodies = {
+        oneOf: Object.entries(method.responses)
+          .map(([status, response]) => {
+            if (!response) return null
 
-              if ('$ref' in response) {
-                return null //TODO
-              }
+            if ('$ref' in response) {
+              return null //TODO
+            }
 
-              let { schema } = response
+            let { schema } = response
 
-              if (!schema) {
-                return null
-              }
+            if (!schema) {
+              return null
+            }
 
-              return [status, schema]
+            return createSchemaObj({
+              status: { type: 'string', const: status },
+              body: schema,
             })
-            .filter(Boolean)
-        )
-      )
+          })
+          .filter(Boolean),
+      }
 
       const schemas = {
-        responseBody,
+        responseBodies,
         path: createSchemaObj({}),
         query: createSchemaObj({}, { additionalProperties: true }),
         header: createSchemaObj({}, { additionalProperties: true }),
@@ -115,7 +116,7 @@ async function main() {
                     not: { oneOf: [{ type: 'string' }, { type: 'object' }] },
                   },
             ], // TODO: Better type? Like `never`?
-            ['ResponseBody', schemas.responseBody],
+            ['ResponseBodies', schemas.responseBodies],
           ])
         ),
       ]
@@ -136,30 +137,14 @@ async function main() {
   )
 
   const importsCode = `
-    import Ajv, { JSONSchemaType } from 'ajv'
+    import Ajv from 'ajv'
     import type { Request, Response, NextFunction } from 'express'
 
     // TODO: Options
     const ajv = new Ajv({ coerceTypes: 'array', useDefaults: 'empty' })
   `
 
-  const schemasCode = `const schemas = ${JSON.stringify(schemaObject, null, 2)}
-  //  as unknown as {
-  //   [ID in OperationId]: {
-  //     properties: {
-  //       Params: JSONSchemaType<Requests[ID]['Params']>
-  //       Query: JSONSchemaType<Requests[ID]['Query']>
-  //       Headers: JSONSchemaType<Requests[ID]['Headers']>
-  //       RequestBody: JSONSchemaType<Requests[ID]['RequestBody']>
-  //       ResponseBody: {
-  //         [Status in OperationId[ID]['ResponseBody']]: JSONSchemaType<
-  //           Requests[ID]['ResponseBody']
-  //         >
-  //       }
-  //     }
-  //   }
-  // }
-  `
+  const schemasCode = `const schemas = ${JSON.stringify(schemaObject, null, 2)}`
 
   const handlerTypes = `
     interface ResponseSend<T> {
@@ -172,13 +157,13 @@ async function main() {
     type ResponseStatus<
       ID extends OperationId,
       Code extends number
-    > = Code extends keyof Requests[ID]['ResponseBody']
-      ? Requests[ID]['ResponseBody'][Code]
+    > = Code extends keyof Requests[ID]['ResponseBodies']
+      ? Requests[ID]['ResponseBodies'][Code]
       : never
     
     type ValidatedRequest<ID extends OperationId> = Request<
       Requests[ID]['Params'],
-      Requests[ID]['ResponseBody'][keyof Requests[ID]['ResponseBody']],
+      Requests[ID]['ResponseBodies'][keyof Requests[ID]['ResponseBodies']],
       Requests[ID]['RequestBody'],
       Requests[ID]['Query']
     >
@@ -187,13 +172,13 @@ async function main() {
       Response,
       'status' | 'send' | 'json'
     > & {
-      status<Status extends keyof Requests[ID]['ResponseBody']>(
+      status<Status extends keyof Requests[ID]['ResponseBodies']>(
         code: Status
-      ): ResponseSend<Requests[ID]['ResponseBody'][Status]>
+      ): ResponseSend<Requests[ID]['ResponseBodies'][Status]>
     } & ResponseSend<ResponseStatus<ID, 200>>
 
     type ValidatedResponseReturn<ID extends OperationId> = UnionizeResponses<
-      Requests[ID]['ResponseBody']
+      Requests[ID]['ResponseBodies']
     >
     
     type UnionizeResponses<ResponseDictionary extends object> = {
@@ -205,7 +190,7 @@ async function main() {
     
     function getValidators<ID extends OperationId>(operationId: ID) {
       type Req = Requests[ID]
-      const { Params, Query, Headers, RequestBody, ResponseBody } =
+      const { Params, Query, Headers, RequestBody, ResponseBodies } =
         schemas[operationId].properties
     
       return {
@@ -269,9 +254,32 @@ async function main() {
               )
             )
           }
+
+          // TODO: Class for this
+          const modifiedRes = {
+            ...res,
+            status(status) {
+              console.log(status)
+              return {
+                ...modifiedRes,
+                send(body) {
+                  console.log(body)
+                  // TODO: Check this response exists
+                  if (!validate.responseBodies[status](body)) {
+                    return next(
+                      new Error(
+                        \`Validation error: Response body \${validate.responseBodies[status].errors[0].message}\`
+                      )
+                    )
+                  }
+                  res.status(status).send(body)
+                  return modifiedRes
+                }
+              }
+            }
+          }
     
-    
-          return handler(req, res, next)
+          return handler(req, modifiedRes, next)
         }
       }
     }
@@ -292,38 +300,14 @@ async function main() {
     }
   `
 
-  // interface GetUserHandler {
-  //   (
-  //     req: Request<
-  //       GetUser.Params,
-  //       GetUser.ResponseBody[200 | 404],
-  //       GetUser.RequestBody,
-  //       GetUser.Query
-  //     >,
-  //     // TODO: Make generic
-  //     res: Omit<
-  //       Response<GetUser.ResponseBody[200]>,
-  //       'status' | 'send' | 'json'
-  //     > & {
-  //       status(code: 200): ResponseSend<GetUser.ResponseBody[200]>
-  //       status(code: 404): ResponseSend<GetUser.ResponseBody[404]>
-  //     } & ResponseSend<GetUser.ResponseBody[200]>,
-  //     next: NextFunction
-  //   ): Promise<
-  //     | { status: 200; body: GetUser.ResponseBody[200] }
-  //     | { status: 404; body: GetUser.ResponseBody[404] }
-  //   >
-  // }
-
   // TODO: Prettier really necessary?
-  const file = prettier.format(
-    [importsCode, schemasCode, typesCode, handlerTypes].join('\n'),
-    {
-      semi: false,
-      singleQuote: true,
-      parser: 'typescript',
-    }
-  )
+  const file = [importsCode, schemasCode, typesCode, handlerTypes].join('\n') //prettier.format(
+  //   {
+  //     semi: false,
+  //     singleQuote: true,
+  //     parser: 'typescript',
+  //   }
+  // )
 
   // const file = lines.join('\n')
 

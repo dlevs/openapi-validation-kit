@@ -10,7 +10,7 @@ app.get(
     console.log(req.query.status)
     res.status('200').send([
       { id: 1, name: 'Foo', photoUrls: [] },
-      { id: 2, name: 'Bar', photoUrls: [] },
+      { id: 2, nae: 'Bar', phoUrls: [] },
     ])
   })
 )
