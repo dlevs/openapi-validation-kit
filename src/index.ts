@@ -5,12 +5,14 @@ import { compile } from 'json-schema-to-typescript'
 import prettier from 'prettier'
 
 const createSchemaObj = (
-  properties: Record<string, OpenAPIV2.SchemaObject>
-) => {
+  properties: Record<string, OpenAPIV2.SchemaObject>,
+  options?: Partial<OpenAPIV2.SchemaObject>
+): OpenAPIV2.SchemaObject => {
   return {
     type: 'object',
-    required: Object.keys(properties),
     additionalProperties: false,
+    required: Object.keys(properties),
+    ...options,
     properties,
   }
 }
@@ -55,8 +57,8 @@ async function main() {
       const schemas = {
         responseBody,
         path: createSchemaObj({}),
-        query: createSchemaObj({}),
-        header: createSchemaObj({}),
+        query: createSchemaObj({}, { additionalProperties: true }),
+        header: createSchemaObj({}, { additionalProperties: true }),
       }
       let body: null | OpenAPIV2.SchemaObject = null
 
@@ -66,7 +68,15 @@ async function main() {
           if ('$ref' in param) {
             return null //TODO
           }
-          const { in: paramIn, name, required, format, ...paramRest } = param
+          // TODO: pick valid props instead of omitting invalid ones
+          const {
+            in: paramIn,
+            name,
+            required,
+            format,
+            collectionFormat,
+            ...paramRest
+          } = param
 
           const schema =
             (schemas as Record<string, OpenAPIV2.SchemaObject>)[paramIn] ?? null
@@ -96,7 +106,15 @@ async function main() {
             ['Params', schemas.path],
             ['Query', schemas.query],
             ['Headers', schemas.header],
-            ['RequestBody', body ? body : { type: 'null', nullable: true }], // TODO: Better type? Like `never`?
+            [
+              'RequestBody',
+              body
+                ? body
+                : // TODO: Is there a better way to do this? Or just ignore the body?
+                  {
+                    not: { oneOf: [{ type: 'string' }, { type: 'object' }] },
+                  },
+            ], // TODO: Better type? Like `never`?
             ['ResponseBody', schemas.responseBody],
           ])
         ),
@@ -122,7 +140,7 @@ async function main() {
     import type { Request, Response, NextFunction } from 'express'
 
     // TODO: Options
-    const ajv = new Ajv({ coerceTypes: true })
+    const ajv = new Ajv({ coerceTypes: 'array', useDefaults: 'empty' })
   `
 
   const schemasCode = `const schemas = ${JSON.stringify(schemaObject, null, 2)}
@@ -187,12 +205,13 @@ async function main() {
     
     function getValidators<ID extends OperationId>(operationId: ID) {
       type Req = Requests[ID]
-      const { Params, Query, RequestBody, ResponseBody } =
+      const { Params, Query, Headers, RequestBody, ResponseBody } =
         schemas[operationId].properties
     
       return {
         params: ajv.compile<Req['Params']>(Params),
         query: ajv.compile<Req['Query']>(Query),
+        headers: ajv.compile<Req['Headers']>(Headers),
         requestBody: ajv.compile<Req['Query']>(RequestBody),
       }
     }
@@ -226,6 +245,31 @@ async function main() {
               )
             )
           }
+
+          if (!validate.headers(req.headers)) {
+            return next(
+              new Error(
+                \`Validation error: Headers \${validate.headers.errors[0].message}\`
+              )
+            )
+          }
+
+          if (!validate.query(req.query)) {
+            return next(
+              new Error(
+                \`Validation error: Request query \${validate.query.errors[0].message}\`
+              )
+            )
+          }
+
+          if (!validate.requestBody(req.body)) {
+            return next(
+              new Error(
+                \`Validation error: Request body \${validate.requestBody.errors[0].message}\`
+              )
+            )
+          }
+    
     
           return handler(req, res, next)
         }

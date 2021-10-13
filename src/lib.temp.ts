@@ -2,18 +2,18 @@ import Ajv, { JSONSchemaType } from 'ajv'
 import type { Request, Response, NextFunction } from 'express'
 
 // TODO: Options
-const ajv = new Ajv({ coerceTypes: true })
+const ajv = new Ajv({ coerceTypes: 'array', useDefaults: 'empty' })
 
 const schemas = {
   uploadFile: {
     type: 'object',
-    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     additionalProperties: false,
+    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     properties: {
       Params: {
         type: 'object',
-        required: ['petId'],
         additionalProperties: false,
+        required: ['petId'],
         properties: {
           petId: {
             description: 'ID of pet to update',
@@ -24,24 +24,34 @@ const schemas = {
       },
       Query: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       Headers: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       RequestBody: {
-        type: 'null',
-        nullable: true,
+        not: {
+          oneOf: [
+            {
+              type: 'string',
+            },
+            {
+              type: 'object',
+              required: [],
+              additionalProperties: true,
+            },
+          ],
+        },
       },
       ResponseBody: {
         type: 'object',
-        required: ['200'],
         additionalProperties: false,
+        required: ['200'],
         properties: {
           '200': {
             type: 'object',
@@ -66,25 +76,25 @@ const schemas = {
   },
   addPet: {
     type: 'object',
-    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     additionalProperties: false,
+    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     properties: {
       Params: {
         type: 'object',
-        required: [],
         additionalProperties: false,
+        required: [],
         properties: {},
       },
       Query: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       Headers: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       RequestBody: {
@@ -166,33 +176,33 @@ const schemas = {
       },
       ResponseBody: {
         type: 'object',
-        required: [],
         additionalProperties: false,
+        required: [],
         properties: {},
       },
     },
   },
   updatePet: {
     type: 'object',
-    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     additionalProperties: false,
+    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     properties: {
       Params: {
         type: 'object',
-        required: [],
         additionalProperties: false,
+        required: [],
         properties: {},
       },
       Query: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       Headers: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       RequestBody: {
@@ -274,27 +284,27 @@ const schemas = {
       },
       ResponseBody: {
         type: 'object',
-        required: [],
         additionalProperties: false,
+        required: [],
         properties: {},
       },
     },
   },
   findPetsByStatus: {
     type: 'object',
-    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     additionalProperties: false,
+    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     properties: {
       Params: {
         type: 'object',
-        required: [],
         additionalProperties: false,
+        required: [],
         properties: {},
       },
       Query: {
         type: 'object',
-        required: ['status'],
-        additionalProperties: false,
+        additionalProperties: true,
+        // required: ['status'],
         properties: {
           status: {
             description: 'Status values that need to be considered for filter',
@@ -302,9 +312,8 @@ const schemas = {
             items: {
               type: 'string',
               enum: ['available', 'pending', 'sold'],
-              default: 'available',
             },
-            collectionFormat: 'multi',
+            default: ['available'],
             nullable: false,
             minItems: 0,
           },
@@ -312,18 +321,28 @@ const schemas = {
       },
       Headers: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       RequestBody: {
-        type: 'null',
-        nullable: true,
+        not: {
+          oneOf: [
+            {
+              type: 'string',
+            },
+            {
+              type: 'object',
+              required: [],
+              additionalProperties: true,
+            },
+          ],
+        },
       },
       ResponseBody: {
         type: 'object',
-        required: ['200'],
         additionalProperties: false,
+        required: ['200'],
         properties: {
           '200': {
             type: 'array',
@@ -412,19 +431,19 @@ const schemas = {
   },
   findPetsByTags: {
     type: 'object',
-    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     additionalProperties: false,
+    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     properties: {
       Params: {
         type: 'object',
-        required: [],
         additionalProperties: false,
+        required: [],
         properties: {},
       },
       Query: {
         type: 'object',
+        additionalProperties: true,
         required: ['tags'],
-        additionalProperties: false,
         properties: {
           tags: {
             description: 'Tags to filter by',
@@ -432,7 +451,6 @@ const schemas = {
             items: {
               type: 'string',
             },
-            collectionFormat: 'multi',
             nullable: false,
             minItems: 0,
           },
@@ -440,18 +458,28 @@ const schemas = {
       },
       Headers: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       RequestBody: {
-        type: 'null',
-        nullable: true,
+        not: {
+          oneOf: [
+            {
+              type: 'string',
+            },
+            {
+              type: 'object',
+              required: [],
+              additionalProperties: true,
+            },
+          ],
+        },
       },
       ResponseBody: {
         type: 'object',
-        required: ['200'],
         additionalProperties: false,
+        required: ['200'],
         properties: {
           '200': {
             type: 'array',
@@ -540,13 +568,13 @@ const schemas = {
   },
   getPetById: {
     type: 'object',
-    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     additionalProperties: false,
+    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     properties: {
       Params: {
         type: 'object',
-        required: ['petId'],
         additionalProperties: false,
+        required: ['petId'],
         properties: {
           petId: {
             description: 'ID of pet to return',
@@ -557,24 +585,34 @@ const schemas = {
       },
       Query: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       Headers: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       RequestBody: {
-        type: 'null',
-        nullable: true,
+        not: {
+          oneOf: [
+            {
+              type: 'string',
+            },
+            {
+              type: 'object',
+              required: [],
+              additionalProperties: true,
+            },
+          ],
+        },
       },
       ResponseBody: {
         type: 'object',
-        required: ['200'],
         additionalProperties: false,
+        required: ['200'],
         properties: {
           '200': {
             type: 'object',
@@ -659,13 +697,13 @@ const schemas = {
   },
   updatePetWithForm: {
     type: 'object',
-    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     additionalProperties: false,
+    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     properties: {
       Params: {
         type: 'object',
-        required: ['petId'],
         additionalProperties: false,
+        required: ['petId'],
         properties: {
           petId: {
             description: 'ID of pet that needs to be updated',
@@ -676,37 +714,47 @@ const schemas = {
       },
       Query: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       Headers: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       RequestBody: {
-        type: 'null',
-        nullable: true,
+        not: {
+          oneOf: [
+            {
+              type: 'string',
+            },
+            {
+              type: 'object',
+              required: [],
+              additionalProperties: true,
+            },
+          ],
+        },
       },
       ResponseBody: {
         type: 'object',
-        required: [],
         additionalProperties: false,
+        required: [],
         properties: {},
       },
     },
   },
   deletePet: {
     type: 'object',
-    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     additionalProperties: false,
+    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     properties: {
       Params: {
         type: 'object',
-        required: ['petId'],
         additionalProperties: false,
+        required: ['petId'],
         properties: {
           petId: {
             description: 'Pet id to delete',
@@ -717,14 +765,14 @@ const schemas = {
       },
       Query: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       Headers: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {
           api_key: {
             type: 'string',
@@ -733,48 +781,68 @@ const schemas = {
         },
       },
       RequestBody: {
-        type: 'null',
-        nullable: true,
+        not: {
+          oneOf: [
+            {
+              type: 'string',
+            },
+            {
+              type: 'object',
+              required: [],
+              additionalProperties: true,
+            },
+          ],
+        },
       },
       ResponseBody: {
         type: 'object',
-        required: [],
         additionalProperties: false,
+        required: [],
         properties: {},
       },
     },
   },
   getInventory: {
     type: 'object',
-    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     additionalProperties: false,
+    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     properties: {
       Params: {
         type: 'object',
-        required: [],
         additionalProperties: false,
+        required: [],
         properties: {},
       },
       Query: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       Headers: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       RequestBody: {
-        type: 'null',
-        nullable: true,
+        not: {
+          oneOf: [
+            {
+              type: 'string',
+            },
+            {
+              type: 'object',
+              required: [],
+              additionalProperties: true,
+            },
+          ],
+        },
       },
       ResponseBody: {
         type: 'object',
-        required: ['200'],
         additionalProperties: false,
+        required: ['200'],
         properties: {
           '200': {
             type: 'object',
@@ -790,25 +858,25 @@ const schemas = {
   },
   placeOrder: {
     type: 'object',
-    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     additionalProperties: false,
+    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     properties: {
       Params: {
         type: 'object',
-        required: [],
         additionalProperties: false,
+        required: [],
         properties: {},
       },
       Query: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       Headers: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       RequestBody: {
@@ -847,8 +915,8 @@ const schemas = {
       },
       ResponseBody: {
         type: 'object',
-        required: ['200'],
         additionalProperties: false,
+        required: ['200'],
         properties: {
           '200': {
             type: 'object',
@@ -890,13 +958,13 @@ const schemas = {
   },
   getOrderById: {
     type: 'object',
-    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     additionalProperties: false,
+    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     properties: {
       Params: {
         type: 'object',
-        required: ['orderId'],
         additionalProperties: false,
+        required: ['orderId'],
         properties: {
           orderId: {
             description: 'ID of pet that needs to be fetched',
@@ -909,24 +977,34 @@ const schemas = {
       },
       Query: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       Headers: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       RequestBody: {
-        type: 'null',
-        nullable: true,
+        not: {
+          oneOf: [
+            {
+              type: 'string',
+            },
+            {
+              type: 'object',
+              required: [],
+              additionalProperties: true,
+            },
+          ],
+        },
       },
       ResponseBody: {
         type: 'object',
-        required: ['200'],
         additionalProperties: false,
+        required: ['200'],
         properties: {
           '200': {
             type: 'object',
@@ -968,13 +1046,13 @@ const schemas = {
   },
   deleteOrder: {
     type: 'object',
-    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     additionalProperties: false,
+    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     properties: {
       Params: {
         type: 'object',
-        required: ['orderId'],
         additionalProperties: false,
+        required: ['orderId'],
         properties: {
           orderId: {
             description: 'ID of the order that needs to be deleted',
@@ -986,49 +1064,59 @@ const schemas = {
       },
       Query: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       Headers: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       RequestBody: {
-        type: 'null',
-        nullable: true,
+        not: {
+          oneOf: [
+            {
+              type: 'string',
+            },
+            {
+              type: 'object',
+              required: [],
+              additionalProperties: true,
+            },
+          ],
+        },
       },
       ResponseBody: {
         type: 'object',
-        required: [],
         additionalProperties: false,
+        required: [],
         properties: {},
       },
     },
   },
   createUsersWithListInput: {
     type: 'object',
-    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     additionalProperties: false,
+    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     properties: {
       Params: {
         type: 'object',
-        required: [],
         additionalProperties: false,
+        required: [],
         properties: {},
       },
       Query: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       Headers: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       RequestBody: {
@@ -1074,21 +1162,21 @@ const schemas = {
       },
       ResponseBody: {
         type: 'object',
-        required: [],
         additionalProperties: false,
+        required: [],
         properties: {},
       },
     },
   },
   getUserByName: {
     type: 'object',
-    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     additionalProperties: false,
+    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     properties: {
       Params: {
         type: 'object',
-        required: ['username'],
         additionalProperties: false,
+        required: ['username'],
         properties: {
           username: {
             description:
@@ -1100,24 +1188,34 @@ const schemas = {
       },
       Query: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       Headers: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       RequestBody: {
-        type: 'null',
-        nullable: true,
+        not: {
+          oneOf: [
+            {
+              type: 'string',
+            },
+            {
+              type: 'object',
+              required: [],
+              additionalProperties: true,
+            },
+          ],
+        },
       },
       ResponseBody: {
         type: 'object',
-        required: ['200'],
         additionalProperties: false,
+        required: ['200'],
         properties: {
           '200': {
             type: 'object',
@@ -1162,13 +1260,13 @@ const schemas = {
   },
   updateUser: {
     type: 'object',
-    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     additionalProperties: false,
+    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     properties: {
       Params: {
         type: 'object',
-        required: ['username'],
         additionalProperties: false,
+        required: ['username'],
         properties: {
           username: {
             description: 'name that need to be updated',
@@ -1179,14 +1277,14 @@ const schemas = {
       },
       Query: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       Headers: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       RequestBody: {
@@ -1228,21 +1326,21 @@ const schemas = {
       },
       ResponseBody: {
         type: 'object',
-        required: [],
         additionalProperties: false,
+        required: [],
         properties: {},
       },
     },
   },
   deleteUser: {
     type: 'object',
-    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     additionalProperties: false,
+    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     properties: {
       Params: {
         type: 'object',
-        required: ['username'],
         additionalProperties: false,
+        required: ['username'],
         properties: {
           username: {
             description: 'The name that needs to be deleted',
@@ -1253,43 +1351,53 @@ const schemas = {
       },
       Query: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       Headers: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       RequestBody: {
-        type: 'null',
-        nullable: true,
+        not: {
+          oneOf: [
+            {
+              type: 'string',
+            },
+            {
+              type: 'object',
+              required: [],
+              additionalProperties: true,
+            },
+          ],
+        },
       },
       ResponseBody: {
         type: 'object',
-        required: [],
         additionalProperties: false,
+        required: [],
         properties: {},
       },
     },
   },
   loginUser: {
     type: 'object',
-    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     additionalProperties: false,
+    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     properties: {
       Params: {
         type: 'object',
-        required: [],
         additionalProperties: false,
+        required: [],
         properties: {},
       },
       Query: {
         type: 'object',
+        additionalProperties: true,
         required: ['username', 'password'],
-        additionalProperties: false,
         properties: {
           username: {
             description: 'The user name for login',
@@ -1305,18 +1413,28 @@ const schemas = {
       },
       Headers: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       RequestBody: {
-        type: 'null',
-        nullable: true,
+        not: {
+          oneOf: [
+            {
+              type: 'string',
+            },
+            {
+              type: 'object',
+              required: [],
+              additionalProperties: true,
+            },
+          ],
+        },
       },
       ResponseBody: {
         type: 'object',
-        required: ['200'],
         additionalProperties: false,
+        required: ['200'],
         properties: {
           '200': {
             type: 'string',
@@ -1327,60 +1445,70 @@ const schemas = {
   },
   logoutUser: {
     type: 'object',
-    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     additionalProperties: false,
+    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     properties: {
       Params: {
         type: 'object',
-        required: [],
         additionalProperties: false,
+        required: [],
         properties: {},
       },
       Query: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       Headers: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       RequestBody: {
-        type: 'null',
-        nullable: true,
+        not: {
+          oneOf: [
+            {
+              type: 'string',
+            },
+            {
+              type: 'object',
+              required: [],
+              additionalProperties: true,
+            },
+          ],
+        },
       },
       ResponseBody: {
         type: 'object',
-        required: [],
         additionalProperties: false,
+        required: [],
         properties: {},
       },
     },
   },
   createUsersWithArrayInput: {
     type: 'object',
-    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     additionalProperties: false,
+    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     properties: {
       Params: {
         type: 'object',
-        required: [],
         additionalProperties: false,
+        required: [],
         properties: {},
       },
       Query: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       Headers: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       RequestBody: {
@@ -1426,33 +1554,33 @@ const schemas = {
       },
       ResponseBody: {
         type: 'object',
-        required: [],
         additionalProperties: false,
+        required: [],
         properties: {},
       },
     },
   },
   createUser: {
     type: 'object',
-    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     additionalProperties: false,
+    required: ['Params', 'Query', 'Headers', 'RequestBody', 'ResponseBody'],
     properties: {
       Params: {
         type: 'object',
-        required: [],
         additionalProperties: false,
+        required: [],
         properties: {},
       },
       Query: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       Headers: {
         type: 'object',
+        additionalProperties: true,
         required: [],
-        additionalProperties: false,
         properties: {},
       },
       RequestBody: {
@@ -1494,8 +1622,8 @@ const schemas = {
       },
       ResponseBody: {
         type: 'object',
-        required: [],
         additionalProperties: false,
+        required: [],
         properties: {},
       },
     },
@@ -1525,24 +1653,38 @@ export interface Requests {
        */
       petId: number
     }
-    Query: {}
-    Headers: {}
-    RequestBody: null
+    Query: {
+      [k: string]: unknown
+    }
+    Headers: {
+      [k: string]: unknown
+    }
+    RequestBody: {
+      [k: string]: unknown
+    }
     ResponseBody: {
       '200': ApiResponse
     }
   }
   addPet: {
     Params: {}
-    Query: {}
-    Headers: {}
+    Query: {
+      [k: string]: unknown
+    }
+    Headers: {
+      [k: string]: unknown
+    }
     RequestBody: Pet
     ResponseBody: {}
   }
   updatePet: {
     Params: {}
-    Query: {}
-    Headers: {}
+    Query: {
+      [k: string]: unknown
+    }
+    Headers: {
+      [k: string]: unknown
+    }
     RequestBody: Pet
     ResponseBody: {}
   }
@@ -1553,9 +1695,14 @@ export interface Requests {
        * Status values that need to be considered for filter
        */
       status: ('available' | 'pending' | 'sold')[]
+      [k: string]: unknown
     }
-    Headers: {}
-    RequestBody: null
+    Headers: {
+      [k: string]: unknown
+    }
+    RequestBody: {
+      [k: string]: unknown
+    }
     ResponseBody: {
       '200': Pet[]
     }
@@ -1567,9 +1714,14 @@ export interface Requests {
        * Tags to filter by
        */
       tags: string[]
+      [k: string]: unknown
     }
-    Headers: {}
-    RequestBody: null
+    Headers: {
+      [k: string]: unknown
+    }
+    RequestBody: {
+      [k: string]: unknown
+    }
     ResponseBody: {
       '200': Pet[]
     }
@@ -1581,9 +1733,15 @@ export interface Requests {
        */
       petId: number
     }
-    Query: {}
-    Headers: {}
-    RequestBody: null
+    Query: {
+      [k: string]: unknown
+    }
+    Headers: {
+      [k: string]: unknown
+    }
+    RequestBody: {
+      [k: string]: unknown
+    }
     ResponseBody: {
       '200': Pet
     }
@@ -1595,9 +1753,15 @@ export interface Requests {
        */
       petId: number
     }
-    Query: {}
-    Headers: {}
-    RequestBody: null
+    Query: {
+      [k: string]: unknown
+    }
+    Headers: {
+      [k: string]: unknown
+    }
+    RequestBody: {
+      [k: string]: unknown
+    }
     ResponseBody: {}
   }
   deletePet: {
@@ -1607,18 +1771,29 @@ export interface Requests {
        */
       petId: number
     }
-    Query: {}
+    Query: {
+      [k: string]: unknown
+    }
     Headers: {
       api_key?: string
+      [k: string]: unknown
     }
-    RequestBody: null
+    RequestBody: {
+      [k: string]: unknown
+    }
     ResponseBody: {}
   }
   getInventory: {
     Params: {}
-    Query: {}
-    Headers: {}
-    RequestBody: null
+    Query: {
+      [k: string]: unknown
+    }
+    Headers: {
+      [k: string]: unknown
+    }
+    RequestBody: {
+      [k: string]: unknown
+    }
     ResponseBody: {
       '200': {
         [k: string]: number
@@ -1627,8 +1802,12 @@ export interface Requests {
   }
   placeOrder: {
     Params: {}
-    Query: {}
-    Headers: {}
+    Query: {
+      [k: string]: unknown
+    }
+    Headers: {
+      [k: string]: unknown
+    }
     RequestBody: Order
     ResponseBody: {
       '200': Order
@@ -1641,9 +1820,15 @@ export interface Requests {
        */
       orderId: number
     }
-    Query: {}
-    Headers: {}
-    RequestBody: null
+    Query: {
+      [k: string]: unknown
+    }
+    Headers: {
+      [k: string]: unknown
+    }
+    RequestBody: {
+      [k: string]: unknown
+    }
     ResponseBody: {
       '200': Order
     }
@@ -1655,15 +1840,25 @@ export interface Requests {
        */
       orderId: number
     }
-    Query: {}
-    Headers: {}
-    RequestBody: null
+    Query: {
+      [k: string]: unknown
+    }
+    Headers: {
+      [k: string]: unknown
+    }
+    RequestBody: {
+      [k: string]: unknown
+    }
     ResponseBody: {}
   }
   createUsersWithListInput: {
     Params: {}
-    Query: {}
-    Headers: {}
+    Query: {
+      [k: string]: unknown
+    }
+    Headers: {
+      [k: string]: unknown
+    }
     RequestBody: User[]
     ResponseBody: {}
   }
@@ -1674,9 +1869,15 @@ export interface Requests {
        */
       username: string
     }
-    Query: {}
-    Headers: {}
-    RequestBody: null
+    Query: {
+      [k: string]: unknown
+    }
+    Headers: {
+      [k: string]: unknown
+    }
+    RequestBody: {
+      [k: string]: unknown
+    }
     ResponseBody: {
       '200': User
     }
@@ -1688,8 +1889,12 @@ export interface Requests {
        */
       username: string
     }
-    Query: {}
-    Headers: {}
+    Query: {
+      [k: string]: unknown
+    }
+    Headers: {
+      [k: string]: unknown
+    }
     RequestBody: User
     ResponseBody: {}
   }
@@ -1700,9 +1905,15 @@ export interface Requests {
        */
       username: string
     }
-    Query: {}
-    Headers: {}
-    RequestBody: null
+    Query: {
+      [k: string]: unknown
+    }
+    Headers: {
+      [k: string]: unknown
+    }
+    RequestBody: {
+      [k: string]: unknown
+    }
     ResponseBody: {}
   }
   loginUser: {
@@ -1716,31 +1927,50 @@ export interface Requests {
        * The password for login in clear text
        */
       password: string
+      [k: string]: unknown
     }
-    Headers: {}
-    RequestBody: null
+    Headers: {
+      [k: string]: unknown
+    }
+    RequestBody: {
+      [k: string]: unknown
+    }
     ResponseBody: {
       '200': string
     }
   }
   logoutUser: {
     Params: {}
-    Query: {}
-    Headers: {}
-    RequestBody: null
+    Query: {
+      [k: string]: unknown
+    }
+    Headers: {
+      [k: string]: unknown
+    }
+    RequestBody: {
+      [k: string]: unknown
+    }
     ResponseBody: {}
   }
   createUsersWithArrayInput: {
     Params: {}
-    Query: {}
-    Headers: {}
+    Query: {
+      [k: string]: unknown
+    }
+    Headers: {
+      [k: string]: unknown
+    }
     RequestBody: User[]
     ResponseBody: {}
   }
   createUser: {
     Params: {}
-    Query: {}
-    Headers: {}
+    Query: {
+      [k: string]: unknown
+    }
+    Headers: {
+      [k: string]: unknown
+    }
     RequestBody: User
     ResponseBody: {}
   }
@@ -1842,12 +2072,13 @@ type UnionizeResponses<ResponseDictionary extends object> = {
 
 function getValidators<ID extends OperationId>(operationId: ID) {
   type Req = Requests[ID]
-  const { Params, Query, RequestBody, ResponseBody } =
+  const { Params, Query, Headers, RequestBody, ResponseBody } =
     schemas[operationId].properties
 
   return {
     params: ajv.compile<Req['Params']>(Params),
     query: ajv.compile<Req['Query']>(Query),
+    headers: ajv.compile<Req['Headers']>(Headers),
     requestBody: ajv.compile<Req['Query']>(RequestBody),
   }
 }
@@ -1878,6 +2109,30 @@ function createValidationHandlerWrapper<ID extends OperationId>(
         return next(
           new Error(
             `Validation error: Request path params ${validate.params.errors[0].message}`
+          )
+        )
+      }
+
+      if (!validate.headers(req.headers)) {
+        return next(
+          new Error(
+            `Validation error: Headers ${validate.headers.errors[0].message}`
+          )
+        )
+      }
+
+      if (!validate.query(req.query)) {
+        return next(
+          new Error(
+            `Validation error: Request query ${validate.query.errors[0].message}`
+          )
+        )
+      }
+
+      if (!validate.requestBody(req.body)) {
+        return next(
+          new Error(
+            `Validation error: Request body ${validate.requestBody.errors[0].message}`
           )
         )
       }

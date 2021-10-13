@@ -5,7 +5,18 @@ const app = express()
 // const validate = Validate({ validateResponses: true })
 
 app.get(
-  '/foo/:petId',
+  '/pets',
+  validate.findPetsByStatus(async (req, res) => {
+    console.log(req.query.status)
+    res.status('200').send([
+      { id: 1, name: 'Foo', photoUrls: [] },
+      { id: 2, name: 'Bar', photoUrls: [] },
+    ])
+  })
+)
+
+app.get(
+  '/pets/:petId',
   validate.getPetById(async (req, res) => {
     // TODO: Sort the fact that this must be a string status ("200" instead of 200). Maybe model the response types as an array to keep the number?
     res.status('200').send({ id: req.params.petId, name: 'foo', photoUrls: [] })
