@@ -1,5 +1,8 @@
-import type { JSONSchemaType } from 'ajv'
+import Ajv, { JSONSchemaType } from 'ajv'
 import type { Request, Response, NextFunction } from 'express'
+
+// TODO: Options
+const ajv = new Ajv({ coerceTypes: true })
 
 const schemas = {
   uploadFile: {
@@ -13,12 +16,8 @@ const schemas = {
         additionalProperties: false,
         properties: {
           petId: {
-            name: 'petId',
-            in: 'path',
             description: 'ID of pet to update',
-            required: true,
             type: 'integer',
-            format: 'int64',
             nullable: false,
           },
         },
@@ -44,7 +43,7 @@ const schemas = {
         required: ['200'],
         additionalProperties: false,
         properties: {
-          200: {
+          '200': {
             type: 'object',
             properties: {
               code: {
@@ -298,10 +297,7 @@ const schemas = {
         additionalProperties: false,
         properties: {
           status: {
-            name: 'status',
-            in: 'query',
             description: 'Status values that need to be considered for filter',
-            required: true,
             type: 'array',
             items: {
               type: 'string',
@@ -329,7 +325,7 @@ const schemas = {
         required: ['200'],
         additionalProperties: false,
         properties: {
-          200: {
+          '200': {
             type: 'array',
             items: {
               type: 'object',
@@ -431,10 +427,7 @@ const schemas = {
         additionalProperties: false,
         properties: {
           tags: {
-            name: 'tags',
-            in: 'query',
             description: 'Tags to filter by',
-            required: true,
             type: 'array',
             items: {
               type: 'string',
@@ -460,7 +453,7 @@ const schemas = {
         required: ['200'],
         additionalProperties: false,
         properties: {
-          200: {
+          '200': {
             type: 'array',
             items: {
               type: 'object',
@@ -556,12 +549,8 @@ const schemas = {
         additionalProperties: false,
         properties: {
           petId: {
-            name: 'petId',
-            in: 'path',
             description: 'ID of pet to return',
-            required: true,
             type: 'integer',
-            format: 'int64',
             nullable: false,
           },
         },
@@ -587,7 +576,7 @@ const schemas = {
         required: ['200'],
         additionalProperties: false,
         properties: {
-          200: {
+          '200': {
             type: 'object',
             required: ['name', 'photoUrls'],
             properties: {
@@ -679,12 +668,8 @@ const schemas = {
         additionalProperties: false,
         properties: {
           petId: {
-            name: 'petId',
-            in: 'path',
             description: 'ID of pet that needs to be updated',
-            required: true,
             type: 'integer',
-            format: 'int64',
             nullable: false,
           },
         },
@@ -724,12 +709,8 @@ const schemas = {
         additionalProperties: false,
         properties: {
           petId: {
-            name: 'petId',
-            in: 'path',
             description: 'Pet id to delete',
-            required: true,
             type: 'integer',
-            format: 'int64',
             nullable: false,
           },
         },
@@ -746,9 +727,6 @@ const schemas = {
         additionalProperties: false,
         properties: {
           api_key: {
-            name: 'api_key',
-            in: 'header',
-            required: [],
             type: 'string',
             nullable: true,
           },
@@ -798,7 +776,7 @@ const schemas = {
         required: ['200'],
         additionalProperties: false,
         properties: {
-          200: {
+          '200': {
             type: 'object',
             additionalProperties: {
               type: 'integer',
@@ -872,7 +850,7 @@ const schemas = {
         required: ['200'],
         additionalProperties: false,
         properties: {
-          200: {
+          '200': {
             type: 'object',
             properties: {
               id: {
@@ -921,14 +899,10 @@ const schemas = {
         additionalProperties: false,
         properties: {
           orderId: {
-            name: 'orderId',
-            in: 'path',
             description: 'ID of pet that needs to be fetched',
-            required: true,
             type: 'integer',
             maximum: 10,
             minimum: 1,
-            format: 'int64',
             nullable: false,
           },
         },
@@ -954,7 +928,7 @@ const schemas = {
         required: ['200'],
         additionalProperties: false,
         properties: {
-          200: {
+          '200': {
             type: 'object',
             properties: {
               id: {
@@ -1003,13 +977,9 @@ const schemas = {
         additionalProperties: false,
         properties: {
           orderId: {
-            name: 'orderId',
-            in: 'path',
             description: 'ID of the order that needs to be deleted',
-            required: true,
             type: 'integer',
             minimum: 1,
-            format: 'int64',
             nullable: false,
           },
         },
@@ -1121,11 +1091,8 @@ const schemas = {
         additionalProperties: false,
         properties: {
           username: {
-            name: 'username',
-            in: 'path',
             description:
               'The name that needs to be fetched. Use user1 for testing. ',
-            required: true,
             type: 'string',
             nullable: false,
           },
@@ -1152,7 +1119,7 @@ const schemas = {
         required: ['200'],
         additionalProperties: false,
         properties: {
-          200: {
+          '200': {
             type: 'object',
             properties: {
               id: {
@@ -1204,10 +1171,7 @@ const schemas = {
         additionalProperties: false,
         properties: {
           username: {
-            name: 'username',
-            in: 'path',
             description: 'name that need to be updated',
-            required: true,
             type: 'string',
             nullable: false,
           },
@@ -1281,10 +1245,7 @@ const schemas = {
         additionalProperties: false,
         properties: {
           username: {
-            name: 'username',
-            in: 'path',
             description: 'The name that needs to be deleted',
-            required: true,
             type: 'string',
             nullable: false,
           },
@@ -1331,18 +1292,12 @@ const schemas = {
         additionalProperties: false,
         properties: {
           username: {
-            name: 'username',
-            in: 'query',
             description: 'The user name for login',
-            required: true,
             type: 'string',
             nullable: false,
           },
           password: {
-            name: 'password',
-            in: 'query',
             description: 'The password for login in clear text',
-            required: true,
             type: 'string',
             nullable: false,
           },
@@ -1363,7 +1318,7 @@ const schemas = {
         required: ['200'],
         additionalProperties: false,
         properties: {
-          200: {
+          '200': {
             type: 'string',
           },
         },
@@ -1545,21 +1500,23 @@ const schemas = {
       },
     },
   },
-} as unknown as {
-  [ID in OperationId]: {
-    properties: {
-      Params: JSONSchemaType<Requests[ID]['Params']>
-      Query: JSONSchemaType<Requests[ID]['Query']>
-      Headers: JSONSchemaType<Requests[ID]['Headers']>
-      RequestBody: JSONSchemaType<Requests[ID]['RequestBody']>
-      ResponseBody: {
-        [Status in OperationId[ID]['ResponseBody']]: JSONSchemaType<
-          Requests[ID]['ResponseBody']
-        >
-      }
-    }
-  }
 }
+//  as unknown as {
+//   [ID in OperationId]: {
+//     properties: {
+//       Params: JSONSchemaType<Requests[ID]['Params']>
+//       Query: JSONSchemaType<Requests[ID]['Query']>
+//       Headers: JSONSchemaType<Requests[ID]['Headers']>
+//       RequestBody: JSONSchemaType<Requests[ID]['RequestBody']>
+//       ResponseBody: {
+//         [Status in OperationId[ID]['ResponseBody']]: JSONSchemaType<
+//           Requests[ID]['ResponseBody']
+//         >
+//       }
+//     }
+//   }
+// }
+
 export interface Requests {
   uploadFile: {
     Params: {
@@ -1600,7 +1557,7 @@ export interface Requests {
     Headers: {}
     RequestBody: null
     ResponseBody: {
-      200: Pet[]
+      '200': Pet[]
     }
   }
   findPetsByTags: {
@@ -1883,9 +1840,23 @@ type UnionizeResponses<ResponseDictionary extends object> = {
   }
 }[keyof ResponseDictionary]
 
+function getValidators<ID extends OperationId>(operationId: ID) {
+  type Req = Requests[ID]
+  const { Params, Query, RequestBody, ResponseBody } =
+    schemas[operationId].properties
+
+  return {
+    params: ajv.compile<Req['Params']>(Params),
+    query: ajv.compile<Req['Query']>(Query),
+    requestBody: ajv.compile<Req['Query']>(RequestBody),
+  }
+}
+
 function createValidationHandlerWrapper<ID extends OperationId>(
   operationId: ID
 ) {
+  let validate: ReturnType<typeof getValidators>
+
   return function wrapHandlerWithValidation(
     handler: (
       req: ValidatedRequest<ID>,
@@ -1893,13 +1864,24 @@ function createValidationHandlerWrapper<ID extends OperationId>(
       next: NextFunction
     ) => Promise<ValidatedResponseReturn<ID>>
   ) {
+    validate = validate || getValidators(operationId)
+
     // TODO: HOC - read function name here for stacktrace
     return function handlerWithValidation(
       req: Request,
       res: Response,
       next: NextFunction
     ) {
-      // TODO: validation here
+      // // type of validate extends `(data: any) => data is Foo`
+      // const data: any = { foo: 1 }
+      if (!validate.params(req.params)) {
+        return next(
+          new Error(
+            `Validation error: Request path params ${validate.params.errors[0].message}`
+          )
+        )
+      }
+
       return handler(req, res, next)
     }
   }

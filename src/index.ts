@@ -66,20 +66,22 @@ async function main() {
           if ('$ref' in param) {
             return null //TODO
           }
+          const { in: paramIn, name, required, format, ...paramRest } = param
 
           const schema =
-            (schemas as Record<string, OpenAPIV2.SchemaObject>)[param.in] ??
-            null
+            (schemas as Record<string, OpenAPIV2.SchemaObject>)[paramIn] ?? null
 
           if (schema) {
-            schema.properties[param.name] = {
-              ...param,
-              nullable: !param.required, // TODO: Check this
+            schema.properties[name] = {
+              ...paramRest,
+              // Remove number formats (int64), and other things AJV won't enforce.
+              format: paramRest.type === 'string' ? format : undefined,
+              nullable: !required, // TODO: Check this
             }
-            if (param.required) {
-              schema.required?.push(param.name)
+            if (required) {
+              schema.required?.push(name)
             }
-          } else if (param.in === 'body') {
+          } else if (paramIn === 'body') {
             body = param.schema
           }
         })
@@ -116,29 +118,30 @@ async function main() {
   )
 
   const importsCode = `
-    import type { JSONSchemaType } from 'ajv'
+    import Ajv, { JSONSchemaType } from 'ajv'
     import type { Request, Response, NextFunction } from 'express'
+
+    // TODO: Options
+    const ajv = new Ajv({ coerceTypes: true })
   `
 
-  const schemasCode = `const schemas = ${JSON.stringify(
-    schemaObject,
-    null,
-    2
-  )} as unknown as {
-    [ID in OperationId]: {
-      properties: {
-        Params: JSONSchemaType<Requests[ID]['Params']>
-        Query: JSONSchemaType<Requests[ID]['Query']>
-        Headers: JSONSchemaType<Requests[ID]['Headers']>
-        RequestBody: JSONSchemaType<Requests[ID]['RequestBody']>
-        ResponseBody: {
-          [Status in OperationId[ID]['ResponseBody']]: JSONSchemaType<
-            Requests[ID]['ResponseBody']
-          >
-        }
-      }
-    }
-  }`
+  const schemasCode = `const schemas = ${JSON.stringify(schemaObject, null, 2)}
+  //  as unknown as {
+  //   [ID in OperationId]: {
+  //     properties: {
+  //       Params: JSONSchemaType<Requests[ID]['Params']>
+  //       Query: JSONSchemaType<Requests[ID]['Query']>
+  //       Headers: JSONSchemaType<Requests[ID]['Headers']>
+  //       RequestBody: JSONSchemaType<Requests[ID]['RequestBody']>
+  //       ResponseBody: {
+  //         [Status in OperationId[ID]['ResponseBody']]: JSONSchemaType<
+  //           Requests[ID]['ResponseBody']
+  //         >
+  //       }
+  //     }
+  //   }
+  // }
+  `
 
   const handlerTypes = `
     interface ResponseSend<T> {
@@ -182,23 +185,53 @@ async function main() {
       }
     }[keyof ResponseDictionary]
     
-    function createValidationHandlerWrapper <ID extends OperationId> (
+    function getValidators<ID extends OperationId>(operationId: ID) {
+      type Req = Requests[ID]
+      const { Params, Query, RequestBody, ResponseBody } =
+        schemas[operationId].properties
+    
+      return {
+        params: ajv.compile<Req['Params']>(Params),
+        query: ajv.compile<Req['Query']>(Query),
+        requestBody: ajv.compile<Req['Query']>(RequestBody),
+      }
+    }
+    
+    function createValidationHandlerWrapper<ID extends OperationId>(
       operationId: ID
     ) {
-      return function wrapHandlerWithValidation (
+      let validate: ReturnType<typeof getValidators>
+    
+      return function wrapHandlerWithValidation(
         handler: (
           req: ValidatedRequest<ID>,
           res: ValidatedResponse<ID>,
           next: NextFunction
         ) => Promise<ValidatedResponseReturn<ID>>
       ) {
+        validate = validate || getValidators(operationId)
+    
         // TODO: HOC - read function name here for stacktrace
-        return function handlerWithValidation (req: Request, res: Response, next: NextFunction) {
-          // TODO: validation here
+        return function handlerWithValidation(
+          req: Request,
+          res: Response,
+          next: NextFunction
+        ) {
+          // // type of validate extends \`(data: any) => data is Foo\`
+          // const data: any = { foo: 1 }
+          if (!validate.params(req.params)) {
+            return next(
+              new Error(
+                \`Validation error: Request path params \${validate.params.errors[0].message}\`
+              )
+            )
+          }
+    
           return handler(req, res, next)
         }
       }
     }
+    
   
     // TODO: Prepend things to prevent collisions
     interface ResponseSend<T> {
@@ -250,8 +283,7 @@ async function main() {
 
   // const file = lines.join('\n')
 
-  await fs.ensureDir(path.join(__dirname, '../dist'))
-  await fs.writeFile(path.join(__dirname, '../dist/lib.ts'), file)
+  await fs.writeFile(path.join(__dirname, '../src/lib.temp.ts'), file)
 }
 
 main()
