@@ -1,5 +1,5 @@
 import express from 'express'
-import { validate } from './lib.temp'
+import { validate } from './lib'
 
 const app = express()
 // const validate = Validate({ validateResponses: true })
