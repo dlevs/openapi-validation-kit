@@ -13,16 +13,9 @@ interface ResponseSend<T> {
 
 type OperationId = keyof Requests
 
-type ResponseStatus<
-  ID extends OperationId,
-  Code extends number
-> = Code extends keyof Requests[ID]['ResponseBodies']
-  ? Requests[ID]['ResponseBodies'][Code]
-  : never
-
 type ValidatedRequest<ID extends OperationId> = Request<
   Requests[ID]['Params'],
-  Requests[ID]['ResponseBodies'][keyof Requests[ID]['ResponseBodies']],
+  Requests[ID]['ResponseBody'][keyof Requests[ID]['ResponseBody']],
   Requests[ID]['RequestBody'],
   Requests[ID]['Query']
 >
@@ -31,13 +24,13 @@ type ValidatedResponse<ID extends OperationId> = Omit<
   Response,
   'status' | 'send' | 'json'
 > & {
-  status<Status extends keyof Requests[ID]['ResponseBodies']>(
+  status<Status extends keyof Requests[ID]['ResponseBody']>(
     code: Status
-  ): ResponseSend<Requests[ID]['ResponseBodies'][Status]>
-} & ResponseSend<ResponseStatus<ID, 200>>
+  ): ResponseSend<Requests[ID]['ResponseBody'][Status]>
+} & ResponseSend<Extract<Requests[ID]['ResponseBody'], { status: 200 }>>
 
 type ValidatedResponseReturn<ID extends OperationId> = UnionizeResponses<
-  Requests[ID]['ResponseBodies']
+  Requests[ID]['ResponseBody']
 >
 
 type UnionizeResponses<ResponseDictionary extends object> = {
@@ -49,7 +42,7 @@ type UnionizeResponses<ResponseDictionary extends object> = {
 
 function getValidators<ID extends OperationId>(operationId: ID) {
   type Req = Requests[ID]
-  const { Params, Query, Headers, RequestBody, ResponseBodies } =
+  const { Params, Query, Headers, RequestBody, ResponseBody } =
     schemas[operationId].properties
 
   return {
@@ -134,17 +127,17 @@ function createValidationHandlerWrapper<ID extends OperationId>(
       // TODO: Class for this
       const modifiedRes = {
         ...res,
-        status(status) {
+        status(status: number) {
           console.log(status)
           return {
             ...modifiedRes,
-            send(body) {
+            send(body: unknown) {
               console.log(body)
               // TODO: Check this response exists
-              if (!validate.responseBodies[status](body)) {
+              if (!validate.responseBody[status](body)) {
                 return next(
                   new Error(
-                    `Validation error: Response body ${validate.responseBodies[status].errors[0].message}`
+                    `Validation error: Response body ${validate.responseBody[status].errors[0].message}`
                   )
                 )
               }

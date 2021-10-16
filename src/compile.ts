@@ -25,8 +25,8 @@ async function main() {
     .filter(isNotNullish)
     // TODO: Don't flatmap here! There may be "parameters" at the path level that apply to all routes below
     .flatMap((path) => Object.values(path))
-    .filter(isNotString)
-    .filter(isNotArray)
+    .filter(isNotString) // TODO: What _is_ a valid string value here?
+    .filter(isNotArray) // TODO: What _is_ a valid array value here?
     .map((method) => {
       // TODO: Tidy
       const responseBodies = {
