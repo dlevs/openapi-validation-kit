@@ -65,15 +65,15 @@ async function main() {
         method.operationId,
         createSchemaObj(
           {
-            Params: path,
-            Query: query,
-            Headers: header,
-            RequestBody: requestBody,
-            ResponseBody: responseBody,
+            params: path,
+            query,
+            headers: header,
+            requestBody,
+            responseBody,
           },
           { description: method.description }
         ),
-      ]
+      ] as const
     })
 
   const schemaObject = Object.fromEntries(schemaEntries)
@@ -134,7 +134,30 @@ async function main() {
     fs.writeFile(rootPath('./dist/Requests.d.ts'), prettifiedTypesCode),
     fs.writeFile(
       rootPath('./dist/schemas.json'),
-      JSON.stringify(schemaObject, null, `\t`)
+      JSON.stringify(
+        // TODO: Move, and document
+        Object.fromEntries(
+          schemaEntries.map(([opetationId, { properties }]) => {
+            const { responseBody, ...rest } = properties
+            return [
+              opetationId,
+              {
+                ...rest,
+                responseBody: Object.fromEntries(
+                  responseBody.oneOf.map((response) => {
+                    return [
+                      response.properties.status.enum?.[0] ?? 'default',
+                      response.properties.body,
+                    ]
+                  })
+                ),
+              },
+            ]
+          })
+        ),
+        null,
+        `\t`
+      )
     ),
   ])
 }

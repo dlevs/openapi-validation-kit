@@ -1,12 +1,22 @@
 import { OpenAPIV3 } from 'openapi-types'
+import { isNotNullish } from './typeUtils'
+
+type SchemaObjectMap = Record<
+  string,
+  OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject
+>
 
 export function parseApiParameters(
   parameters?: (OpenAPIV3.ParameterObject | OpenAPIV3.ReferenceObject)[]
 ) {
   const outputSchemas = {
-    path: createSchemaObj({}),
-    query: createSchemaObj({}, { additionalProperties: true }),
-    header: createSchemaObj({}, { additionalProperties: true }),
+    path: createSchemaObj({} as SchemaObjectMap),
+    query: createSchemaObj({} as SchemaObjectMap, {
+      additionalProperties: true,
+    }),
+    header: createSchemaObj({} as SchemaObjectMap, {
+      additionalProperties: true,
+    }),
   }
 
   parameters?.forEach((param) => {
@@ -67,7 +77,7 @@ export function parseApiResponseBody(responses: OpenAPIV3.ResponsesObject) {
         body: schema ?? ({ tsType: 'unknown' } as any), // TODO: Type this properly
       })
     })
-    .filter(Boolean)
+    .filter(isNotNullish)
 
   // TODO: Check for method.operationId
   // TODO: Check. Document. Add operation ID in here
@@ -80,20 +90,16 @@ export function parseApiResponseBody(responses: OpenAPIV3.ResponsesObject) {
   }
 }
 
-export function createSchemaObj(
-  properties: Record<
-    string,
-    OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject
-  >,
-  options?: Partial<OpenAPIV3.SchemaObject>
-) {
+export function createSchemaObj<
+  T extends Record<string, OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject>
+>(properties: T, options?: Partial<OpenAPIV3.SchemaObject>) {
   return {
     ...options,
     type: 'object',
     additionalProperties: false,
     required: Object.keys(properties),
     properties,
-  }
+  } as const
 }
 
 // TODO: Try to remove this function

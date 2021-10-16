@@ -14,23 +14,23 @@ interface ResponseSend<T> {
 type OperationId = keyof Requests
 
 type ValidatedRequest<ID extends OperationId> = Request<
-  Requests[ID]['Params'],
-  Requests[ID]['ResponseBody'][keyof Requests[ID]['ResponseBody']],
-  Requests[ID]['RequestBody'],
-  Requests[ID]['Query']
+  Requests[ID]['params'],
+  Requests[ID]['responseBody'][keyof Requests[ID]['responseBody']],
+  Requests[ID]['requestBody'],
+  Requests[ID]['query']
 >
 
 type ValidatedResponse<ID extends OperationId> = Omit<
   Response,
   'status' | 'send' | 'json'
 > & {
-  status<Status extends keyof Requests[ID]['ResponseBody']>(
+  status<Status extends keyof Requests[ID]['responseBody']>(
     code: Status
-  ): ResponseSend<Requests[ID]['ResponseBody'][Status]>
-} & ResponseSend<Extract<Requests[ID]['ResponseBody'], { status: 200 }>>
+  ): ResponseSend<Requests[ID]['responseBody'][Status]>
+} & ResponseSend<Extract<Requests[ID]['responseBody'], { status: 200 }>>
 
 type ValidatedResponseReturn<ID extends OperationId> = UnionizeResponses<
-  Requests[ID]['ResponseBody']
+  Requests[ID]['responseBody']
 >
 
 type UnionizeResponses<ResponseDictionary extends object> = {
@@ -42,14 +42,14 @@ type UnionizeResponses<ResponseDictionary extends object> = {
 
 function getValidators<ID extends OperationId>(operationId: ID) {
   type Req = Requests[ID]
-  const { Params, Query, Headers, RequestBody, ResponseBody } =
-    schemas[operationId].properties
+  const { params, query, headers, requestBody, responseBody } =
+    schemas[operationId]
 
   return {
-    params: ajv.compile<Req['Params']>(Params),
-    query: ajv.compile<Req['Query']>(Query),
-    headers: ajv.compile<Req['Headers']>(Headers),
-    requestBody: ajv.compile<Req['Query']>(RequestBody),
+    params: ajv.compile<Req['params']>(params),
+    query: ajv.compile<Req['query']>(query),
+    headers: ajv.compile<Req['headers']>(headers),
+    requestBody: ajv.compile<Req['query']>(requestBody),
   }
 }
 
@@ -98,7 +98,7 @@ function createValidationHandlerWrapper<ID extends OperationId>(
         return next(
           new Error(
             ajv.errorsText(validate.headers.errors, {
-              dataVar: 'Headers',
+              dataVar: 'headers',
             })
           )
         )
