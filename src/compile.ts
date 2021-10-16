@@ -2,14 +2,7 @@ import fs from 'fs/promises'
 import { compile } from 'json-schema-to-typescript'
 import prettier from 'prettier'
 import type { OpenAPIV3 } from 'openapi-types'
-import {
-  assertNotRef,
-  createSchemaObj,
-  parseApiParameters,
-  parseApiRequestBody,
-  parseApiResponseBody,
-} from './lib/schemaUtils'
-import { isNotNullish } from './lib/typeUtils'
+import { createSchemaObj, parseApiPaths } from './lib/schemaUtils'
 import { rootPath } from './lib/util'
 
 main().catch((err) => {
@@ -22,65 +15,41 @@ async function main() {
     await fs.readFile(rootPath('./examples/petstore.json'), 'utf-8')
   )
 
-  // TODO: Move
-  const schemaEntries = Object.values(spec.paths!)
-    .filter(isNotNullish)
-    .map((path) => {
-      assertNotRef(path)
+  /**
+   * Schemas we'll pass to json-schema-to-typescript to generate
+   * the type shape we want, complete with things like `oneOf: []`
+   * for unions.
+   */
+  const schemasPure = parseApiPaths(spec.paths)
 
-      // Pick the actual http methods
-      return (
-        [
-          path.get,
-          path.put,
-          path.post,
-          path.delete,
-          path.options,
-          path.head,
-          path.patch,
-          path.trace,
-        ]
-          // Filter out those that don't exist
-          .filter(isNotNullish)
-          // Fill in default values from path here, so each method
-          // inherits the level above.
-          .map((method) => ({
-            ...method,
-            parameters: [
-              ...(path.parameters ?? []),
-              ...(method.parameters ?? []),
-            ],
-          }))
-      )
-    })
-    .flat()
-    // Turn the raw OpenAPI operations into a format we can generate
-    // schemas and types for.
-    .map((method) => {
-      const { path, query, header } = parseApiParameters(method.parameters)
-      const requestBody = parseApiRequestBody(method.requestBody)
-      const responseBody = parseApiResponseBody(method.responses)
-
+  /**
+   * A less strict data structure than `schemasPure`.
+   * This one is easier to pick pieces from to validate individual parts
+   * of the request / response separately.
+   */
+  const schemasTidied = Object.fromEntries(
+    Object.entries(schemasPure).map(([opetationId, { properties }]) => {
+      const { responseBody, ...rest } = properties
       return [
-        method.operationId,
-        createSchemaObj(
-          {
-            params: path,
-            query,
-            headers: header,
-            requestBody,
-            responseBody,
-          },
-          { description: method.description }
-        ),
-      ] as const
+        opetationId,
+        {
+          ...rest,
+          responseBody: Object.fromEntries(
+            responseBody.oneOf.map((response) => {
+              return [
+                response.properties.status.enum?.[0] ?? 'default',
+                response.properties.body,
+              ]
+            })
+          ),
+        },
+      ]
     })
-
-  const schemaObject = Object.fromEntries(schemaEntries)
+  )
 
   const typesCode = await compile(
     {
-      ...createSchemaObj(schemaObject),
+      ...createSchemaObj(schemasPure),
       // Support `$ref` to components.
       // Unless also added to `definitions`, resolved references are inlined in the
       // outputted types.
@@ -134,30 +103,7 @@ async function main() {
     fs.writeFile(rootPath('./dist/Requests.d.ts'), prettifiedTypesCode),
     fs.writeFile(
       rootPath('./dist/schemas.json'),
-      JSON.stringify(
-        // TODO: Move, and document
-        Object.fromEntries(
-          schemaEntries.map(([opetationId, { properties }]) => {
-            const { responseBody, ...rest } = properties
-            return [
-              opetationId,
-              {
-                ...rest,
-                responseBody: Object.fromEntries(
-                  responseBody.oneOf.map((response) => {
-                    return [
-                      response.properties.status.enum?.[0] ?? 'default',
-                      response.properties.body,
-                    ]
-                  })
-                ),
-              },
-            ]
-          })
-        ),
-        null,
-        `\t`
-      )
+      JSON.stringify(schemasTidied, null, `\t`)
     ),
   ])
 }

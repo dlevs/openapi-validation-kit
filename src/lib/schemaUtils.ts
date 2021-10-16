@@ -6,7 +6,65 @@ type SchemaObjectMap = Record<
   OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject
 >
 
-export function parseApiParameters(
+export function parseApiPaths(paths: OpenAPIV3.PathsObject) {
+  const entries = Object.values(paths)
+    .filter(isNotNullish)
+    .map((path) => {
+      assertNotRef(path)
+
+      // Pick the actual http methods
+      return (
+        [
+          path.get,
+          path.put,
+          path.post,
+          path.delete,
+          path.options,
+          path.head,
+          path.patch,
+          path.trace,
+        ]
+          // Filter out those that don't exist
+          .filter(isNotNullish)
+          // Fill in default values from path here, so each method
+          // inherits the level above.
+          .map((method) => ({
+            ...method,
+            parameters: [
+              ...(path.parameters ?? []),
+              ...(method.parameters ?? []),
+            ],
+          }))
+      )
+    })
+    .flat()
+    // Turn the raw OpenAPI operations into a format we can generate
+    // schemas and types for.
+    .map((method) => {
+      const { path, query, header } = parseApiParameters(method.parameters)
+      const requestBody = parseApiRequestBody(method.requestBody)
+      const responseBody = parseApiResponseBody(method.responses)
+
+      return [
+        // TODO: Assert operationId is defined
+        method.operationId!,
+        createSchemaObj(
+          {
+            params: path,
+            query,
+            headers: header,
+            requestBody,
+            responseBody,
+          },
+          { description: method.description }
+        ),
+      ] as const
+    })
+
+  return Object.fromEntries(entries)
+}
+
+function parseApiParameters(
   parameters?: (OpenAPIV3.ParameterObject | OpenAPIV3.ReferenceObject)[]
 ) {
   const outputSchemas = {
@@ -41,7 +99,7 @@ export function parseApiParameters(
   return outputSchemas
 }
 
-export function parseApiRequestBody(
+function parseApiRequestBody(
   body?: OpenAPIV3.ReferenceObject | OpenAPIV3.RequestBodyObject
 ): OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject {
   const emptyRequestBody = {
@@ -58,7 +116,7 @@ export function parseApiRequestBody(
   return body?.content?.['application/json']?.schema ?? emptyRequestBody
 }
 
-export function parseApiResponseBody(responses: OpenAPIV3.ResponsesObject) {
+function parseApiResponseBody(responses: OpenAPIV3.ResponsesObject) {
   const bodies = Object.entries(responses)
     .map(([status, response]) => {
       if (!response) return null
