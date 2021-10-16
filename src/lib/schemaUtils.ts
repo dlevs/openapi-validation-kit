@@ -130,7 +130,7 @@ function parseApiResponseBody(responses: OpenAPIV3.ResponsesObject) {
       return createSchemaObj({
         status:
           status === 'default'
-            ? { type: 'number', description }
+            ? { enum: ['default'], description }
             : { enum: [Number(status)], description },
         body: schema ?? ({ tsType: 'unknown' } as any), // TODO: Type this properly
       })

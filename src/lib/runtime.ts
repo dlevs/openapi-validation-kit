@@ -20,14 +20,26 @@ type ValidatedRequest<ID extends OperationId> = Request<
   Requests[ID]['query']
 >
 
+type ResponseBodyBase<ID extends OperationId, Status> = Extract<
+  Requests[ID]['responseBody'],
+  { status: Status }
+>['body']
+
+type ResponseBody<ID extends OperationId, Status> = ResponseBodyBase<
+  ID,
+  Status
+> extends never
+  ? ResponseBodyBase<ID, 'default'>
+  : ResponseBodyBase<ID, Status>
+
 type ValidatedResponse<ID extends OperationId> = Omit<
   Response,
   'status' | 'send' | 'json'
 > & {
-  status<Status extends keyof Requests[ID]['responseBody']>(
+  status<Status extends number>(
     code: Status
-  ): ResponseSend<Requests[ID]['responseBody'][Status]>
-} & ResponseSend<Extract<Requests[ID]['responseBody'], { status: 200 }>>
+  ): ResponseSend<ResponseBody<ID, Status>>
+} & ResponseSend<ResponseSend<ResponseBody<ID, 200>>>
 
 type ValidatedResponseReturn<ID extends OperationId> = UnionizeResponses<
   Requests[ID]['responseBody']
@@ -62,7 +74,7 @@ type HandlerWithValidation<ID extends OperationId> = (
   req: ValidatedRequest<ID>,
   res: ValidatedResponse<ID>,
   next: NextFunction
-) => Promise<ValidatedResponseReturn<ID>>
+) => Promise<ValidatedResponseReturn<ID> | void>
 
 function createValidationHandlerWrapper<ID extends OperationId>(
   operationId: ID
