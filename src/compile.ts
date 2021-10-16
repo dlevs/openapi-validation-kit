@@ -1,8 +1,8 @@
-import fs from 'fs-extra'
+import fs from 'fs/promises'
 import path from 'path'
-import { OpenAPIV3 } from 'openapi-types'
 import { compile } from 'json-schema-to-typescript'
 import prettier from 'prettier'
+import type { OpenAPIV3 } from 'openapi-types'
 import { createSchemaObj, assertNotRef } from './lib/schemaUtils'
 import { isNotArray, isNotNullish, isNotString } from './lib/typeUtils'
 
@@ -11,16 +11,13 @@ function rootPath(...pathComponents: string[]) {
 }
 
 async function main() {
-  // TODO: Validate spec?
-  // const spec: OpenAPIV3 = await SwaggerParser.dereference(
-  //   await fs.readJSON(path.join(__dirname, '../examples/petstore.json'))
-  // )
-
-  const spec: OpenAPIV3.Document = await fs.readJSON(
-    path.join(__dirname, '../examples/petstore.json')
+  const spec: OpenAPIV3.Document = JSON.parse(
+    await fs.readFile(
+      path.join(__dirname, '../examples/petstore.json'),
+      'utf-8'
+    )
   )
 
-  //
   const schemaEntries = Object.values(spec.paths!)
     .filter(isNotNullish)
     // TODO: Don't flatmap here! There may be "parameters" at the path level that apply to all routes below
@@ -135,8 +132,10 @@ async function main() {
       ...JSON.parse(
         JSON.stringify(createSchemaObj(schemaObject), (prop, value) => {
           if (prop === '$ref' && typeof value === 'string') {
-            return value.replace('#/components/schemas/', '#/definitions')
+            return value.replace('#/components/schemas/', '#/definitions/')
           }
+
+          return value
         })
       ),
       // Things in "definitions" get referenced instead of inlined to types
@@ -161,7 +160,12 @@ async function main() {
     parser: 'typescript',
   })
 
-  await fs.ensureDir(rootPath('./dist'))
+  try {
+    await fs.stat(rootPath('./dist'))
+  } catch (err) {
+    await fs.mkdir(rootPath('./dist'))
+  }
+
   await Promise.all([
     fs.writeFile(rootPath('./dist/Requests.d.ts'), file),
     fs.writeFile(
