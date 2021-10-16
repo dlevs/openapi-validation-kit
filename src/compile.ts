@@ -1,122 +1,76 @@
 import fs from 'fs/promises'
-import path from 'path'
 import { compile } from 'json-schema-to-typescript'
 import prettier from 'prettier'
 import type { OpenAPIV3 } from 'openapi-types'
-import { createSchemaObj, assertNotRef } from './lib/schemaUtils'
-import { isNotArray, isNotNullish, isNotString } from './lib/typeUtils'
+import {
+  assertNotRef,
+  createSchemaObj,
+  parseApiParameters,
+  parseApiRequestBody,
+  parseApiResponseBody,
+} from './lib/schemaUtils'
+import { isNotNullish } from './lib/typeUtils'
+import { rootPath } from './lib/util'
 
-function rootPath(...pathComponents: string[]) {
-  return path.join(__dirname, '../', ...pathComponents)
-}
+main().catch((err) => {
+  console.error(err)
+  process.exit(1)
+})
 
 async function main() {
   const spec: OpenAPIV3.Document = JSON.parse(
-    await fs.readFile(
-      path.join(__dirname, '../examples/petstore.json'),
-      'utf-8'
-    )
+    await fs.readFile(rootPath('./examples/petstore.json'), 'utf-8')
   )
 
+  // TODO: Move
   const schemaEntries = Object.values(spec.paths!)
     .filter(isNotNullish)
-    // TODO: Don't flatmap here! There may be "parameters" at the path level that apply to all routes below
-    .flatMap((path) => Object.values(path))
-    .filter(isNotString) // TODO: What _is_ a valid string value here?
-    .filter(isNotArray) // TODO: What _is_ a valid array value here?
+    .map((path) => {
+      assertNotRef(path)
+
+      // Pick the actual http methods
+      return (
+        [
+          path.get,
+          path.put,
+          path.post,
+          path.delete,
+          path.options,
+          path.head,
+          path.patch,
+          path.trace,
+        ]
+          // Filter out those that don't exist
+          .filter(isNotNullish)
+          // Fill in default values from path here, so each method
+          // inherits the level above.
+          .map((method) => ({
+            ...method,
+            parameters: [
+              ...(path.parameters ?? []),
+              ...(method.parameters ?? []),
+            ],
+          }))
+      )
+    })
+    .flat()
+    // Turn the raw OpenAPI operations into a format we can generate
+    // schemas and types for.
     .map((method) => {
-      // TODO: Tidy
-      const responseBodies = {
-        oneOf: Object.entries(method.responses)
-          .map(([status, response]) => {
-            if (!response) return null
-
-            assertNotRef(response)
-
-            let { content, description } = response
-
-            const schema = content?.['application/json']?.schema
-
-            return createSchemaObj({
-              status:
-                status === 'default'
-                  ? { type: 'number', description }
-                  : { enum: [Number(status)], description },
-              body: schema ?? ({ tsType: 'unknown' } as any), // TODO: Type this properly
-            })
-          })
-          .filter(Boolean),
-      }
-
-      // TODO: Check for method.operationId
-
-      // TODO: Check. Document
-      if (responseBodies.oneOf.length === 0) {
-        throw new Error(
-          `No responses found for operation ${method.operationId}`
-        )
-      }
-
-      const schemas = {
-        path: createSchemaObj({}),
-        query: createSchemaObj({}, { additionalProperties: true }),
-        header: createSchemaObj({}, { additionalProperties: true }),
-      }
-      const { requestBody } = method
-      let body: null | OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject = null
-
-      if (requestBody) {
-        assertNotRef(requestBody)
-        body = requestBody?.content?.['application/json']?.schema ?? null
-      }
-
-      method.parameters?.forEach((param) => {
-        if ('$ref' in param) {
-          return null //TODO
-        }
-
-        // TODO: pick valid props instead of omitting invalid ones
-        const {
-          in: paramIn,
-          name,
-          required,
-          description,
-          allowEmptyValue, // TODO: Validate this?
-          schema,
-        } = param
-
-        // TODO: Var names
-        const schemaToPushTo = schemas[paramIn as keyof typeof schemas] ?? null
-        if (schemaToPushTo) {
-          schemaToPushTo.properties[name] = {
-            ...schema,
-            nullable: !required, // TODO: Check this
-          }
-          if (required) {
-            schemaToPushTo.required?.push(name)
-          }
-        }
-      })
+      const { path, query, header } = parseApiParameters(method.parameters)
+      const requestBody = parseApiRequestBody(method.requestBody)
+      const responseBody = parseApiResponseBody(method.responses)
 
       return [
         method.operationId,
         createSchemaObj(
-          Object.fromEntries([
-            ['Params', schemas.path],
-            ['Query', schemas.query],
-            ['Headers', schemas.header],
-            [
-              'RequestBody',
-              body
-                ? body
-                : // TODO: Is there a better way to do this? Or just ignore the body?
-                  {
-                    description: 'No request body',
-                    tsType: 'never',
-                  },
-            ],
-            ['ResponseBody', responseBodies],
-          ]),
+          {
+            Params: path,
+            Query: query,
+            Headers: header,
+            RequestBody: requestBody,
+            ResponseBody: responseBody,
+          },
           { description: method.description }
         ),
       ]
@@ -126,25 +80,36 @@ async function main() {
 
   const typesCode = await compile(
     {
-      // Replace components with definitions. This effects type generation.
-      // See the comments below for reasoning.
-      // The JSON stringify / parse is grim... but it works.
-      ...JSON.parse(
-        JSON.stringify(createSchemaObj(schemaObject), (prop, value) => {
-          if (prop === '$ref' && typeof value === 'string') {
-            return value.replace('#/components/schemas/', '#/definitions/')
-          }
-
-          return value
-        })
-      ),
-      // Things in "definitions" get referenced instead of inlined to types
-      // by json-schema-to-typescript. These are what people will want to
-      // reference in their app code, so this is what we expose.
-      definitions: spec.components?.schemas,
-      // "components" is not significant to json-schema-to-typescript. Things
-      // referenced here will just get inlined into the outputted types.
+      ...createSchemaObj(schemaObject),
+      // Support `$ref` to components.
+      // Unless also added to `definitions`, resolved references are inlined in the
+      // outputted types.
       components: spec.components,
+      // Things in `definitions` get referenced in the types outputted by
+      // "json-schema-to-typescript", instead of inlined. These types are also
+      // what people will want to reference in their app code, so this is what
+      // we expose.
+      //
+      // It seems to be a quirk of "json-schema-to-typescript" that a $ref to
+      // "#/components/schemas/Foo" will correctly be associated with the
+      // generated `Foo` type (technically at path "#/definitions/Foo") - maybe
+      // due to being a reference to the same JS object.
+      //
+      // In short, the output will be like this...
+      //
+      // export interface Foo { hello: 'world' }
+      // export interface Requests {
+      //   myReq: { Params: Foo },
+      //   myOtherReq: { Params: Foo }
+      // }
+      //
+      // ...instead of this:
+      //
+      // export interface Requests {
+      //   myReq: { Params: { hello: 'world' } },
+      //   myOtherReq: { Params: { hello: 'world' } }
+      // }
+      definitions: spec.components?.schemas,
     } as any,
     'Requests',
     {
@@ -153,8 +118,7 @@ async function main() {
     }
   )
 
-  // TODO: Prettier really necessary?
-  const file = prettier.format(typesCode, {
+  const prettifiedTypesCode = prettier.format(typesCode, {
     semi: false,
     singleQuote: true,
     parser: 'typescript',
@@ -167,15 +131,10 @@ async function main() {
   }
 
   await Promise.all([
-    fs.writeFile(rootPath('./dist/Requests.d.ts'), file),
+    fs.writeFile(rootPath('./dist/Requests.d.ts'), prettifiedTypesCode),
     fs.writeFile(
       rootPath('./dist/schemas.json'),
       JSON.stringify(schemaObject, null, `\t`)
     ),
   ])
 }
-
-main().catch((err) => {
-  console.error(err)
-  process.exit(1)
-})
