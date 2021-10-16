@@ -1,12 +1,12 @@
 import express from 'express'
-import { validate } from './lib'
+import { validate } from './lib/runtime'
 
 const app = express()
 // const validate = Validate({ validateResponses: true })
 
 app.get(
   '/pets',
-  validate.findPetsByStatus(async (req, res) => {
+  validate.(async (req, res) => {
     console.log(req.query.status)
     res.status('200').send([
       { id: 1, name: 'Foo', photoUrls: [] },

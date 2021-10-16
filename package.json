@@ -4,8 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node --require ts-node/register src/index.ts",
-    "dev:compile": "nodemon --transpile-only --watch src --ignore src/lib.temp.ts src/index.ts",
+    "dev:compile": "nodemon --transpile-only --watch src src/compile.ts",
     "dev:serve": "nodemon --transpile-only --watch src src/server.temp.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

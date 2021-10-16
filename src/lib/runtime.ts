@@ -1,9 +1,8 @@
 import Ajv from 'ajv'
-import type { Request, Response, NextFunction } from 'express'
+import type { Request, Response, NextFunction, Handler } from 'express'
 // TODO: Naming
-import schemas from '../dist/schemas.json'
-import type Requests from '../dist/Requests'
-
+import schemas from '../../dist/schemas.json'
+import type { Requests } from '../../dist/Requests'
 // TODO: Options
 const ajv = new Ajv({ coerceTypes: 'array', useDefaults: 'empty' })
 
@@ -61,17 +60,24 @@ function getValidators<ID extends OperationId>(operationId: ID) {
   }
 }
 
+type WrapHandlerWithValidation<ID extends OperationId> = (
+  handler: HandlerWithValidation<ID>
+) => Handler
+
+// TODO: Naming
+type HandlerWithValidation<ID extends OperationId> = (
+  req: ValidatedRequest<ID>,
+  res: ValidatedResponse<ID>,
+  next: NextFunction
+) => Promise<ValidatedResponseReturn<ID>>
+
 function createValidationHandlerWrapper<ID extends OperationId>(
   operationId: ID
 ) {
   let validate: ReturnType<typeof getValidators>
 
   return function wrapHandlerWithValidation(
-    handler: (
-      req: ValidatedRequest<ID>,
-      res: ValidatedResponse<ID>,
-      next: NextFunction
-    ) => Promise<ValidatedResponseReturn<ID>>
+    handler: HandlerWithValidation<ID>
   ) {
     validate = validate || getValidators(operationId)
 
@@ -83,10 +89,14 @@ function createValidationHandlerWrapper<ID extends OperationId>(
     ) {
       // // type of validate extends `(data: any) => data is Foo`
       // const data: any = { foo: 1 }
+      // TODO: Expert these. This, and the types, should be the main export. Framework-specific
+      // middleware is secondary
       if (!validate.params(req.params)) {
         return next(
           new Error(
-            `Validation error: Request path params ${validate.params.errors[0].message}`
+            ajv.errorsText(validate.params.errors, {
+              dataVar: 'Request path params',
+            })
           )
         )
       }
@@ -94,7 +104,9 @@ function createValidationHandlerWrapper<ID extends OperationId>(
       if (!validate.headers(req.headers)) {
         return next(
           new Error(
-            `Validation error: Headers ${validate.headers.errors[0].message}`
+            ajv.errorsText(validate.headers.errors, {
+              dataVar: 'Headers',
+            })
           )
         )
       }
@@ -102,7 +114,9 @@ function createValidationHandlerWrapper<ID extends OperationId>(
       if (!validate.query(req.query)) {
         return next(
           new Error(
-            `Validation error: Request query ${validate.query.errors[0].message}`
+            ajv.errorsText(validate.query.errors, {
+              dataVar: 'Request query',
+            })
           )
         )
       }
@@ -110,7 +124,9 @@ function createValidationHandlerWrapper<ID extends OperationId>(
       if (!validate.requestBody(req.body)) {
         return next(
           new Error(
-            `Validation error: Request body ${validate.requestBody.errors[0].message}`
+            ajv.errorsText(validate.requestBody.errors, {
+              dataVar: 'Request body',
+            })
           )
         )
       }
@@ -150,29 +166,8 @@ interface ResponseSend<T> {
   json(data: T): void
 }
 
-export const validate = {
-  uploadFile: createValidationHandlerWrapper('uploadFile'),
-  addPet: createValidationHandlerWrapper('addPet'),
-  updatePet: createValidationHandlerWrapper('updatePet'),
-  findPetsByStatus: createValidationHandlerWrapper('findPetsByStatus'),
-  findPetsByTags: createValidationHandlerWrapper('findPetsByTags'),
-  getPetById: createValidationHandlerWrapper('getPetById'),
-  updatePetWithForm: createValidationHandlerWrapper('updatePetWithForm'),
-  deletePet: createValidationHandlerWrapper('deletePet'),
-  getInventory: createValidationHandlerWrapper('getInventory'),
-  placeOrder: createValidationHandlerWrapper('placeOrder'),
-  getOrderById: createValidationHandlerWrapper('getOrderById'),
-  deleteOrder: createValidationHandlerWrapper('deleteOrder'),
-  createUsersWithListInput: createValidationHandlerWrapper(
-    'createUsersWithListInput'
-  ),
-  getUserByName: createValidationHandlerWrapper('getUserByName'),
-  updateUser: createValidationHandlerWrapper('updateUser'),
-  deleteUser: createValidationHandlerWrapper('deleteUser'),
-  loginUser: createValidationHandlerWrapper('loginUser'),
-  logoutUser: createValidationHandlerWrapper('logoutUser'),
-  createUsersWithArrayInput: createValidationHandlerWrapper(
-    'createUsersWithArrayInput'
-  ),
-  createUser: createValidationHandlerWrapper('createUser'),
-}
+export const validate = Object.fromEntries(
+  Object.entries(schemas).map(([key, value]) => {
+    return [key, createValidationHandlerWrapper(value)]
+  })
+) as { [K in keyof typeof schemas]: WrapHandlerWithValidation<K> }
