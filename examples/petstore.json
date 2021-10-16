@@ -101,6 +101,16 @@
               }
             }
           },
+          "4XX": {
+            "description": "Auth error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          },
           "default": {
             "description": "unexpected error",
             "content": {
@@ -219,7 +229,7 @@
       },
       "Error": {
         "type": "object",
-        "required": ["code", "message"],
+        "required": ["code", "message", "type"],
         "properties": {
           "code": {
             "type": "integer",
@@ -227,6 +237,25 @@
           },
           "message": {
             "type": "string"
+          },
+          "type": {
+            "enum": ["general"]
+          }
+        }
+      },
+      "BadRequestError": {
+        "type": "object",
+        "required": ["code", "message", "type"],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string"
+          },
+          "type": {
+            "enum": ["bad"]
           }
         }
       }

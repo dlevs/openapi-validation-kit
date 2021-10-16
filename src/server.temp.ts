@@ -7,6 +7,11 @@ const app = express()
 app.post(
   '/pets',
   validate.addPet(async (req, res) => {
+    // TODO: Obviously bad example. Schema can handle empty values
+    if (!req.body.name.length) {
+      res.status(422).send({ code: 1034, message: 'Nope', type: 'bad' })
+    }
+
     res.status(200).send({ id: 1, name: req.body.name })
   })
 )
@@ -15,7 +20,9 @@ app.get(
   '/pets/:petId',
   validate['find pet by id'](async (req, res) => {
     if (req.params.id !== 1) {
-      return res.status(404).send({ code: 1029, message: 'Pet not found!' })
+      return res
+        .status(404)
+        .send({ code: 1029, message: 'Pet not found!', type: 'general' })
     }
 
     return res

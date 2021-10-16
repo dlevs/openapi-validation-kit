@@ -2,7 +2,14 @@ import Ajv from 'ajv'
 import type { Request, Response, NextFunction, Handler } from 'express'
 // TODO: Naming
 import schemas from '../../dist/schemas.json'
-import type { Requests } from '../../dist/Requests'
+import type {
+  Requests,
+  StatusCode1XX,
+  StatusCode2XX,
+  StatusCode3XX,
+  StatusCode4XX,
+  StatusCode5XX,
+} from '../../dist/Requests'
 // TODO: Options
 const ajv = new Ajv({ coerceTypes: 'array', useDefaults: 'empty' })
 
@@ -29,8 +36,23 @@ type ResponseBody<ID extends OperationId, Status> = ResponseBodyBase<
   ID,
   Status
 > extends never
-  ? ResponseBodyBase<ID, 'default'>
+  ? ResponseBodyBase<ID, ExpandStatus<Status>> extends never
+    ? ResponseBodyBase<ID, 'default'>
+    : ResponseBodyBase<ID, ExpandStatus<Status>>
   : ResponseBodyBase<ID, Status>
+
+// TODO: Is there a better way to do this?
+type ExpandStatus<Status> = Status extends StatusCode1XX
+  ? StatusCode1XX
+  : Status extends StatusCode2XX
+  ? StatusCode2XX
+  : Status extends StatusCode3XX
+  ? StatusCode3XX
+  : Status extends StatusCode4XX
+  ? StatusCode4XX
+  : Status extends StatusCode5XX
+  ? StatusCode5XX
+  : never
 
 type ValidatedResponse<ID extends OperationId> = Omit<
   Response,

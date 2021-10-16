@@ -127,10 +127,14 @@ function parseApiResponseBody(responses: OpenAPIV3.ResponsesObject) {
 
       const schema = content?.['application/json']?.schema
 
+      status = status.toUpperCase()
+
       return createSchemaObj({
         status:
-          status === 'default'
+          status === 'DEFAULT'
             ? { enum: ['default'], description }
+            : status.endsWith('XX')
+            ? { enum: [status], description, tsType: `StatusCode${status}` }
             : { enum: [Number(status)], description },
         body: schema ?? ({ tsType: 'unknown' } as any), // TODO: Type this properly
       })
