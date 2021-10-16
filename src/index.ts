@@ -2,7 +2,7 @@ import fs from 'fs-extra'
 import path from 'path'
 import { OpenAPIV2 } from 'openapi-types'
 import { compile } from 'json-schema-to-typescript'
-import serialize from 'serialize-to-js'
+import prettier from 'prettier'
 
 const createSchemaObj = (
   properties: Record<string, OpenAPIV2.SchemaObject>,
@@ -42,25 +42,30 @@ async function main() {
             if (!response) return null
 
             if ('$ref' in response) {
-              return null //TODO
+              //TODO
+              throw new Error(
+                `$ref found for operation ${method.operationId}. $refs are not yet supported at this level.`
+              )
             }
 
-            let { schema } = response
-
-            if (!schema) {
-              return null
-            }
+            let { schema, description } = response
 
             return createSchemaObj({
-              status: { type: 'string', const: status },
-              body: schema,
+              status:
+                status === 'default'
+                  ? { type: 'number', description }
+                  : { const: Number(status), description },
+              body: schema ?? { tsType: 'unknown' },
             })
           })
           .filter(Boolean),
       }
 
+      // TODO: Check. Document
       if (responseBodies.oneOf.length === 0) {
-        responseBodies = { type: 'null' } // TODO
+        throw new Error(
+          `No responses found for operation ${method.operationId}`
+        )
       }
 
       const schemas = {
@@ -118,11 +123,13 @@ async function main() {
                 ? body
                 : // TODO: Is there a better way to do this? Or just ignore the body?
                   {
-                    not: { oneOf: [{ type: 'string' }, { type: 'object' }] },
+                    description: 'No request body',
+                    tsType: 'never',
                   },
-            ], // TODO: Better type? Like `never`?
-            ['ResponseBodies', schemas.responseBodies],
-          ])
+            ],
+            ['ResponseBody', schemas.responseBodies],
+          ]),
+          { description: method.description }
         ),
       ]
     })
@@ -143,17 +150,15 @@ async function main() {
   )
 
   // TODO: Prettier really necessary?
-  const file = typesCode //prettier.format(
-  //   {
-  //     semi: false,
-  //     singleQuote: true,
-  //     parser: 'typescript',
-  //   }
-  // )
+  const file = prettier.format(typesCode, {
+    semi: false,
+    singleQuote: true,
+    parser: 'typescript',
+  })
 
   await fs.ensureDir(rootPath('./dist'))
   await Promise.all([
-    fs.writeFile(rootPath('./dist/Requests.d.ts'), typesCode),
+    fs.writeFile(rootPath('./dist/Requests.d.ts'), file),
     fs.writeFile(
       rootPath('./dist/schemas.json'),
       JSON.stringify(schemaObject, null, `\t`)
