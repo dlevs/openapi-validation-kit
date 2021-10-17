@@ -14,6 +14,10 @@
 // should validation, too? E.g. validate one of 200, 2XX or default? It's
 // not really the way anyone expects it to work?
 //
+// It would be easy to create a generic ResolveBody<ID, Status> which would
+// be 100% accurate. We do this when we do `res.status(402).send({ ... }),
+// but when defining the return type, I can't figure out how to define it,
+// since it's all static - not `T` variable to do a cheeky `T extends ...`, etc.
 //----------------------------------------------------------------------
 
 type Req = {
@@ -36,39 +40,43 @@ type GetStatusCategory<T> = T extends `${infer First}XX` ? `${First}XX` : never
 type GetStatusCategoryMatcher<T> = T extends `${infer First}XX`
   ? `${First}${number}${number}`
   : never
-type FilterStatusExact<T> = T extends `${number}` ? T : never
+type GetStatusExact<T> = T extends `${number}` ? T : never
 
-type ResponseReturnExact<ID extends keyof Req> = {
-  [Status in FilterStatusExact<Req[ID]['responseBody']['status']>]: {
+type Values<T extends object> = T[keyof T]
+type ResponseStatus<ID extends keyof Req> = Req[ID]['responseBody']['status']
+
+type ResponseReturnExact<ID extends keyof Req> = Values<{
+  [Status in GetStatusExact<ResponseStatus<ID>>]: {
     status: Status
     body: ResponseBody<ID, Status>
   }
-}[FilterStatusExact<Req[ID]['responseBody']['status']>]
+}>
 
-type ResponseReturnCategory<ID extends keyof Req> = {
-  [Status in GetStatusCategory<Req[ID]['responseBody']['status']>]: {
+type ResponseReturnCategory<ID extends keyof Req> = Values<{
+  [Status in GetStatusCategory<ResponseStatus<ID>>]: {
     status: GetStatusCategoryMatcher<Status>
     body: ResponseBody<ID, Status>
   }
-}[GetStatusCategory<Req[ID]['responseBody']['status']>]
+}>
 
-type ResponseReturnDefault<ID extends keyof Req> = {
+type ResponseReturnDefault<ID extends keyof Req> = Values<{
   [Status in Exclude<
     StatusCategoriesXX,
-    GetStatusCategoryMatcher<Req[ID]['responseBody']['status']>
+    GetStatusCategoryMatcher<ResponseStatus<ID>>
   >]: {
     status: Status
     body: ResponseBody<ID, 'default'>
   }
-}[Exclude<
-  StatusCategoriesXX,
-  GetStatusCategoryMatcher<Req[ID]['responseBody']['status']>
->]
+}>
 
 type ResponseReturn<ID extends keyof Req> =
   | ResponseReturnExact<ID>
   | ResponseReturnCategory<ID>
   | ResponseReturnDefault<ID>
+
+type A = ResponseReturnExact<'addPet'>
+type B = ResponseReturnCategory<'addPet'>
+type C = ResponseReturnDefault<'addPet'>
 
 // Testing
 const a: ResponseReturn<'addPet'> = {
