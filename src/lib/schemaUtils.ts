@@ -156,9 +156,9 @@ export function createSchemaObj<
   T extends Record<string, OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject>
 >(properties: T, options?: Partial<OpenAPIV3.SchemaObject>) {
   return {
+    additionalProperties: false,
     ...options,
     type: 'object',
-    additionalProperties: false,
     required: Object.keys(properties),
     properties,
   } as const

@@ -22,31 +22,6 @@ async function main() {
    */
   const schemasPure = parseApiPaths(spec.paths)
 
-  /**
-   * A less strict data structure than `schemasPure`.
-   * This one is easier to pick pieces from to validate individual parts
-   * of the request / response separately.
-   */
-  const schemasTidied = Object.fromEntries(
-    Object.entries(schemasPure).map(([opetationId, { properties }]) => {
-      const { responseBody, ...rest } = properties
-      return [
-        opetationId,
-        {
-          ...rest,
-          responseBody: Object.fromEntries(
-            responseBody.oneOf.map((response) => {
-              return [
-                response.properties.status.enum[0],
-                response.properties.body,
-              ]
-            })
-          ),
-        },
-      ]
-    })
-  )
-
   let typesCode = await compile(
     {
       ...createSchemaObj(schemasPure),
@@ -102,6 +77,31 @@ async function main() {
     parser: 'typescript',
   })
 
+  /**
+   * A less strict data structure than `schemasPure`.
+   * This one is easier to pick pieces from to validate individual parts
+   * of the request / response separately.
+   */
+  const schemasTidied = Object.fromEntries(
+    Object.entries(schemasPure).map(([opetationId, { properties }]) => {
+      const { responseBody, ...rest } = properties
+      return [
+        opetationId,
+        {
+          ...rest,
+          responseBody: Object.fromEntries(
+            responseBody.oneOf.map((response) => {
+              return [
+                response.properties.status.enum[0],
+                response.properties.body,
+              ]
+            })
+          ),
+        },
+      ]
+    })
+  )
+
   try {
     await fs.stat(rootPath('./dist'))
   } catch (err) {
@@ -112,7 +112,16 @@ async function main() {
     fs.writeFile(rootPath('./dist/Requests.d.ts'), prettifiedTypesCode),
     fs.writeFile(
       rootPath('./dist/schemas.json'),
-      JSON.stringify(schemasTidied, null, `\t`)
+      JSON.stringify(
+        schemasTidied,
+        (key, value) => {
+          if (key === 'tsType') {
+            return undefined
+          }
+          return value
+        },
+        `\t`
+      )
     ),
   ])
 }

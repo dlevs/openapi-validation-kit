@@ -4,6 +4,26 @@
 
 TODO: High-level summary here
 
+## TODO
+
+- [ ] Expose generic functions for validation
+- [ ] Expose express functions under `/express` path
+- [ ] Improve validation error messages
+- [ ] Build CLI
+  - [ ] Accept args
+  - [ ] Have it generate a tidy bundle with a package.json pointing to entry points
+  - [ ] Add help text
+- [ ] Compile all TS down to JS / .d.ts files
+- [ ] Add handlers for direct return (objects with "status" properties, and those without (200))
+- [ ] Add tests
+  - [ ] CLI
+  - [ ] supertest (api)
+  - [ ] Types test
+  - [ ] validator tests
+- [ ] Tidy + address TODOs
+- [ ] Finish README docs
+- [ ] Publish to npm
+
 ## Installation
 
 ## Usage
@@ -198,6 +218,7 @@ import { validators } from './dist'
 
 let pet: unknown
 
+// TODO: This is useful, but maybe also expose a validator that allows you to just pass a status as a function argument, so "402" would work for "4XX" schema
 let validator = validators.getPet.responseBody['200']
 if (validator(pet)) {
   // `pet` is valid and typed correctly
