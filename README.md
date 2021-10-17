@@ -241,13 +241,6 @@ const myPet: Pet = {
 }
 ```
 
-## Goals
-
-- **Great DX** - Full request / response validation. Typed `req` and `res` arguments - no need to pass these manually (like `(req: Request<A, B, C, D>, ...)`) and then wonder if they're in sync with the validator. And all of this exposed via a very simple, minimal API.
-- **OpenAPI doc first** - This is the single-source of truth for an API. It's a standard, and is very portable.
-
-  Some tools do things the other way - relying on code annotations to generate a schema. This is not always suitable, especially when dealing with a distributed system where the API is served by many services, potentially written in different languages.
-
 ## Motivation
 
 This project was inspired by [fastify](https://www.fastify.io/)'s built in schema validation. I wanted that in express, and I wanted TypeScript to be aware of the types too. There are projects that bring the validation functionality to express, like [express-openapi-validator](https://www.npmjs.com/package/express-openapi-validator); these are great, but they don't provide the tight TypeScript integration that is possible when you have a separate compile step.
@@ -255,6 +248,25 @@ This project was inspired by [fastify](https://www.fastify.io/)'s built in schem
 There might be something out there that does the job, but I've not yet found it.
 
 This project is currently nails my use case, but does not try to be complete. If you need something battle-tested and production-ready, this is not it (yet).
+
+## Drawbacks / deliberate API design decisions
+
+- **Compilation** - Nobody wants to run a command every time they edit their schema to use the types - it's cumbersome. But it's necessary to provide the correct TypeScript types. The `--watch` flag aims to reduce this friction.
+- **Only supports OpenAPI version 3.0** - There are [tools that convert from other formats](https://www.npmjs.com/package/api-spec-converter), use those on your document first.
+- **No remapping** - It's common for tools like [Amazon's API Gateway](https://aws.amazon.com/api-gateway/) to enable mapping of the publicly-accessible API to the internal services that power them, where the path can be rewritten, and parameters from the path mapped to query parameters, and vice-versa. This package does not understand this. To make use of such features, you'd need to preprocess the OpenAPI document so that the desired output of the mapping (which for AWS is in `x-amazon-apigateway-integration` objects) is expressed as a valid OpenAPI document that represents the parameters the internal services expect.
+
+  Note, such gateways often have validation built in, if you choose to enable it. They tend to lack support for validating response bodies, or support for newer "format" values, and the "pattern" property (or, I've been holding it wrong - also likely!).
+
+- **Limited magic** - The dream might be an interface like below:
+
+  ```ts
+  app.get('/pets/:id', (req, res) => {
+    // `req` and `res` are typed correctly, and validated by middleware
+    // purely based off the first argument: '/pets/:id'.
+  })
+  ```
+
+  This may be possible, but feels a bit _too_ magic, and breaks nested routing capabilities. The wrapper function approach used by this library feels like the right balance of magic and explicitness to lead to good DX, with hopefully minimal confusion.
 
 ## Dependencies
 
