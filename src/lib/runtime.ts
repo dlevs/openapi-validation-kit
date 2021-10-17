@@ -3,14 +3,8 @@ import addFormats from 'ajv-formats'
 import type { Request, Response, NextFunction, Handler } from 'express'
 // TODO: Naming
 import schemas from '../../dist/schemas.json'
-import type {
-  Requests,
-  StatusCode1XX,
-  StatusCode2XX,
-  StatusCode3XX,
-  StatusCode4XX,
-  StatusCode5XX,
-} from '../../dist/Requests'
+import { Requests } from '../../dist/Requests'
+
 // TODO: Options
 const ajv = new Ajv({ coerceTypes: 'array', useDefaults: 'empty' })
 addFormats(ajv)
@@ -29,32 +23,10 @@ type ValidatedRequest<ID extends OperationId> = Request<
   Requests[ID]['query']
 >
 
-type ResponseBodyBase<ID extends OperationId, Status> = Extract<
+type ResponseBody<ID extends OperationId, Status extends number> = Extract<
   Requests[ID]['responseBody'],
   { status: Status }
 >['body']
-
-type ResponseBody<ID extends OperationId, Status> = ResponseBodyBase<
-  ID,
-  Status
-> extends never
-  ? ResponseBodyBase<ID, ExpandStatus<Status>> extends never
-    ? ResponseBodyBase<ID, 'default'>
-    : ResponseBodyBase<ID, ExpandStatus<Status>>
-  : ResponseBodyBase<ID, Status>
-
-// TODO: Is there a better way to do this?
-type ExpandStatus<Status> = Status extends StatusCode1XX
-  ? StatusCode1XX
-  : Status extends StatusCode2XX
-  ? StatusCode2XX
-  : Status extends StatusCode3XX
-  ? StatusCode3XX
-  : Status extends StatusCode4XX
-  ? StatusCode4XX
-  : Status extends StatusCode5XX
-  ? StatusCode5XX
-  : never
 
 type ValidatedResponse<ID extends OperationId> = Omit<
   Response,
@@ -63,18 +35,23 @@ type ValidatedResponse<ID extends OperationId> = Omit<
   status<Status extends number>(
     code: Status
   ): ResponseSend<ResponseBody<ID, Status>>
-} & ResponseSend<ResponseSend<ResponseBody<ID, 200>>>
+} & ResponseSend<ResponseBody<ID, 200>>
 
-type ValidatedResponseReturn<ID extends OperationId> = UnionizeResponses<
-  Requests[ID]['responseBody']
->
+type ValidatedResponseReturn<ID extends OperationId> =
+  // e.g. { status: 200, body: MyBody }
+  // The code below "unionizes" the type
+  | {
+      [Status in Requests[ID]['responseBody']['status']]: {
+        status: Status
+        body: ResponseBody<ID, Status>
+      }
+      // TODO: This could be static, really. All requests have same possible statuses at the moment - `HttpStatusCode`
+    }[Requests[ID]['responseBody']['status']]
+  // e.g. MyBody (default status is 200 when omitted)
+  | ResponseBody<ID, 200>
 
-type UnionizeResponses<ResponseDictionary extends object> = {
-  [Status in keyof ResponseDictionary]: {
-    status: Status
-    body: ResponseDictionary[Status]
-  }
-}[keyof ResponseDictionary]
+// TODO: why are all all the bodies "never"?
+type Test = ValidatedResponseReturn<'find pet by id'>
 
 function getValidators<ID extends OperationId>(operationId: ID) {
   type Req = Requests[ID]
@@ -121,7 +98,7 @@ function createValidationHandlerWrapper<ID extends OperationId>(
     handler: HandlerWithValidation<ID>
   ) {
     // TODO: HOC - read function name here for stacktrace
-    return function handlerWithValidation(
+    return async function handlerWithValidation(
       req: Request,
       res: Response,
       next: NextFunction
@@ -215,7 +192,26 @@ function createValidationHandlerWrapper<ID extends OperationId>(
         },
       }
 
-      return handler(req, modifiedRes, next)
+      try {
+        const result = await handler(req, modifiedRes, next)
+
+        if (result === undefined) {
+          return next()
+        }
+
+        // TODO: And validate it here
+        const isStatusDefined =
+          'status' in result &&
+          'body' in result &&
+          typeof result.status === 'number'
+
+        const normalizedResult = isStatusDefined
+          ? result
+          : { status: 200, body: result }
+        res.status(normalizedResult.status).send(normalizedResult.status)
+      } catch (err) {
+        return next(err)
+      }
     }
   }
 }

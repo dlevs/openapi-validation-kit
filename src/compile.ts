@@ -63,13 +63,14 @@ async function main() {
   )
 
   // TODO: Move...
-  typesCode += `
-    export type StatusCode1XX = 100 | 101 | 102 | 103
-    export type StatusCode2XX = 200 | 201 | 202 | 203 | 204 | 205 | 206 | 207 | 208 | 226
-    export type StatusCode3XX = 300 | 301 | 302 | 303 | 304 | 305 | 307 | 308
-    export type StatusCode4XX = 400 | 401 | 402 | 403 | 404 | 405 | 406 | 407 | 408 | 409 | 410 | 411 | 412 | 413 | 414 | 415 | 416 | 417 | 418 | 421 | 422 | 423 | 424 | 425 | 426 | 428 | 429 | 431 | 451
-    export type StatusCode5XX = 500 | 501 | 502 | 503 | 504 | 505 | 506 | 507 | 508 | 509 | 510 | 511
-  `
+  typesCode += ''
+  //`
+  //   export type StatusCode1XX = ${statusCode1XX.join(' | ')}
+  //   export type StatusCode2XX = ${statusCode2XX.join(' | ')}
+  //   export type StatusCode3XX = ${statusCode3XX.join(' | ')}
+  //   export type StatusCode4XX = ${statusCode4XX.join(' | ')}
+  //   export type StatusCode5XX = ${statusCode5XX.join(' | ')}
+  // `
 
   const prettifiedTypesCode = prettier.format(typesCode, {
     semi: false,

@@ -1,3 +1,4 @@
+import { partition, sortBy } from 'lodash'
 import { OpenAPIV3 } from 'openapi-types'
 import { isNotNullish } from './typeUtils'
 
@@ -5,6 +6,29 @@ type SchemaObjectMap = Record<
   string,
   OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject
 >
+
+// TODO: Move
+export const statusCode1XX = [100, 101, 102, 103] as const
+export const statusCode2XX = [
+  200, 201, 202, 203, 204, 205, 206, 207, 208, 226,
+] as const
+export const statusCode3XX = [300, 301, 302, 303, 304, 305, 307, 308] as const
+export const statusCode4XX = [
+  400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414,
+  415, 416, 417, 418, 421, 422, 423, 424, 425, 426, 428, 429, 431, 451,
+] as const
+export const statusCode5XX = [
+  500, 501, 502, 503, 504, 505, 506, 507, 508, 509, 510, 511,
+] as const
+
+// TODO: Use node's list from 'http' lib
+const allStatusCodes: ReadonlyArray<number> = [
+  ...statusCode1XX,
+  ...statusCode2XX,
+  ...statusCode3XX,
+  ...statusCode4XX,
+  ...statusCode5XX,
+]
 
 export function parseApiPaths(paths: OpenAPIV3.PathsObject) {
   const entries = Object.values(paths)
@@ -117,7 +141,22 @@ function parseApiRequestBody(
 }
 
 function parseApiResponseBody(responses: OpenAPIV3.ResponsesObject) {
-  const bodies = Object.entries(responses)
+  let remainingStatus = [...allStatusCodes]
+
+  // TODO: Document and tidy
+  const bodies = sortBy(Object.entries(responses), ([status]) => {
+    status = status.toUpperCase()
+
+    if (status === 'DEFAULT') {
+      return 3
+    }
+
+    if (status.endsWith('XX')) {
+      return 2
+    }
+
+    return 1
+  })
     .map(([status, response]) => {
       if (!response) return null
 
@@ -129,13 +168,26 @@ function parseApiResponseBody(responses: OpenAPIV3.ResponsesObject) {
 
       status = status.toUpperCase()
 
+      let expandedStatuses: number[]
+
+      // TODO: This is really grim. Tidy it. Document how it massively simplifies "runtime" file types, if it works
+      if (status === 'DEFAULT') {
+        expandedStatuses = remainingStatus
+      } else if (status.endsWith('XX')) {
+        const [matched, notMatched] = partition(
+          remainingStatus,
+          (statusNumber) => {
+            return `${String(statusNumber)[0]}XX` === status
+          }
+        )
+        expandedStatuses = matched
+        remainingStatus = notMatched
+      } else {
+        expandedStatuses = [Number(status)]
+      }
+
       return createSchemaObj({
-        status:
-          status === 'DEFAULT'
-            ? { enum: ['default'], description }
-            : status.endsWith('XX')
-            ? { enum: [status], description, tsType: `StatusCode${status}` }
-            : { enum: [Number(status)], description },
+        status: { enum: expandedStatuses, description },
         body: schema ?? ({ tsType: 'unknown' } as any), // TODO: Type this properly
       })
     })
