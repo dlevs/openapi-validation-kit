@@ -37,7 +37,9 @@ type ResponseBody<ID extends keyof Req, Status> = Extract<
   { status: Status }
 >['body']
 
-type AllStatuses = `${1 | 2 | 3 | 4 | 5}${Digit}${Digit}`
+type AllStatusFirst = 1 | 2 | 3 | 4 | 5
+type AllStatuses = `${AllStatusFirst}${Digit}${Digit}`
+type AllStatusCategories = `${AllStatusFirst}XX`
 type StatusExact<T> = T extends `${number}` ? T : never
 type StatusCategory<T> = T extends `${infer First}XX`
   ? `${First}${Digit}${Digit}`
@@ -57,14 +59,21 @@ type ResponseReturnExact<ID extends keyof Req> = Values<{
 }>
 
 type ResponseReturnCategory<ID extends keyof Req> = Values<{
-  [Status in Exclude<
-    StatusCategory<ResponseStatus<ID>>,
-    StatusExact<ResponseStatus<ID>>
-  >]: {
-    status: Status
-    body: ResponseBody<ID, StatusCategoryXX<Status>>
+  [Status in AllStatusCategories]: {
+    status: Exclude<StatusCategory<Status>, StatusExact<ResponseStatus<ID>>>
+    body: ResponseBody<ID, Status>
   }
 }>
+
+// type ResponseReturnCategory<ID extends keyof Req> = Values<{
+//   [Status in Exclude<
+//     StatusCategory<ResponseStatus<ID>>,
+//     StatusExact<ResponseStatus<ID>>
+//   >]: {
+//     status: Status
+//     body: ResponseBody<ID, StatusCategoryXX<Status>>
+//   }
+// }>
 
 type ResponseReturnDefault<ID extends keyof Req> = {
   status: Exclude<
@@ -102,8 +111,8 @@ const c: ResponseReturn<'addPet'> = {
   body: { foo: '200!' },
 }
 const d: ResponseReturn<'addPet'> = {
-  status: '403',
-  body: { foo: 'four!' },
+  status: '320',
+  body: { foo: 'default!' },
 }
 
 const e: ResponseReturn<'addPet'> = {
