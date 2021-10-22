@@ -144,19 +144,7 @@ function parseApiResponseBody(responses: OpenAPIV3.ResponsesObject) {
   let remainingStatus = [...allStatusCodes]
 
   // TODO: Document and tidy
-  const bodies = sortBy(Object.entries(responses), ([status]) => {
-    status = status.toUpperCase()
-
-    if (status === 'DEFAULT') {
-      return 3
-    }
-
-    if (status.endsWith('XX')) {
-      return 2
-    }
-
-    return 1
-  })
+  const bodies = Object.entries(responses)
     .map(([status, response]) => {
       if (!response) return null
 
@@ -166,28 +154,15 @@ function parseApiResponseBody(responses: OpenAPIV3.ResponsesObject) {
 
       const schema = content?.['application/json']?.schema
 
-      status = status.toUpperCase()
-
-      let expandedStatuses: number[]
-
-      // TODO: This is really grim. Tidy it. Document how it massively simplifies "runtime" file types, if it works
-      if (status === 'DEFAULT') {
-        expandedStatuses = remainingStatus
-      } else if (status.endsWith('XX')) {
-        const [matched, notMatched] = partition(
-          remainingStatus,
-          (statusNumber) => {
-            return `${String(statusNumber)[0]}XX` === status
-          }
-        )
-        expandedStatuses = matched
-        remainingStatus = notMatched
-      } else {
-        expandedStatuses = [Number(status)]
-      }
+      // Normalization
+      status = status.toUpperCase().endsWith('XX')
+        ? // e.g. "4XX"
+          status.toUpperCase()
+        : // e.g. "200", "default"
+          status.toLowerCase()
 
       return createSchemaObj({
-        status: { enum: expandedStatuses, description },
+        status: { enum: [status], description },
         body: schema ?? ({ tsType: 'unknown' } as any), // TODO: Type this properly
       })
     })

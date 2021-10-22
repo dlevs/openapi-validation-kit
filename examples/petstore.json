@@ -102,7 +102,7 @@
             }
           },
           "4XX": {
-            "description": "Auth error",
+            "description": "Bad request error",
             "content": {
               "application/json": {
                 "schema": {

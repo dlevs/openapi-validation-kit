@@ -14,7 +14,26 @@ interface ResponseSend<T> {
   json(data: T): void
 }
 
+// Status filter types
+type StatusCategory<T extends number> = `${T}` extends `${infer First}${number}`
+  ? `${First}XX`
+  : never
+
+// Related to `Requests` type
 type OperationId = keyof Requests
+type ResponseBodyBase<ID extends keyof Requests, Status> = Extract<
+  Requests[ID]['responseBody'],
+  { status: Status }
+>['body']
+
+type ResponseBody<
+  ID extends keyof Requests,
+  Status extends number
+> = ResponseBodyBase<ID, `${Status}`> extends never
+  ? ResponseBodyBase<ID, StatusCategory<Status>> extends never
+    ? ResponseBodyBase<ID, 'default'>
+    : ResponseBodyBase<ID, StatusCategory<Status>>
+  : ResponseBodyBase<ID, `${Status}`>
 
 type ValidatedRequest<ID extends OperationId> = Request<
   Requests[ID]['params'],
@@ -22,11 +41,6 @@ type ValidatedRequest<ID extends OperationId> = Request<
   Requests[ID]['requestBody'],
   Requests[ID]['query']
 >
-
-type ResponseBody<ID extends OperationId, Status extends number> = Extract<
-  Requests[ID]['responseBody'],
-  { status: Status }
->['body']
 
 type ValidatedResponse<ID extends OperationId> = Omit<
   Response,
@@ -36,22 +50,6 @@ type ValidatedResponse<ID extends OperationId> = Omit<
     code: Status
   ): ResponseSend<ResponseBody<ID, Status>>
 } & ResponseSend<ResponseBody<ID, 200>>
-
-type ValidatedResponseReturn<ID extends OperationId> =
-  // e.g. { status: 200, body: MyBody }
-  // The code below "unionizes" the type
-  | {
-      [Status in Requests[ID]['responseBody']['status']]: {
-        status: Status
-        body: ResponseBody<ID, Status>
-      }
-      // TODO: This could be static, really. All requests have same possible statuses at the moment - `HttpStatusCode`
-    }[Requests[ID]['responseBody']['status']]
-  // e.g. MyBody (default status is 200 when omitted)
-  | ResponseBody<ID, 200>
-
-// TODO: why are all all the bodies "never"?
-type Test = ValidatedResponseReturn<'find pet by id'>
 
 function getValidators<ID extends OperationId>(operationId: ID) {
   type Req = Requests[ID]
@@ -67,11 +65,7 @@ function getValidators<ID extends OperationId>(operationId: ID) {
       Object.entries(responseBody).map(([status, schema]) => {
         return [status, ajv.compile(schema)] as const
       })
-    ) as {
-      [K in keyof typeof schemas[ID]['responseBody']]: ValidateFunction<
-        ResponseBody<ID, K>
-      >
-    },
+    ),
   }
 }
 
@@ -84,9 +78,7 @@ type HandlerWithValidation<ID extends OperationId> = (
   req: ValidatedRequest<ID>,
   res: ValidatedResponse<ID>,
   next: NextFunction
-) => MaybePromise<ValidatedResponseReturn<ID> | void>
-
-type MaybePromise<T> = Promise<T> | T
+) => void
 
 function createValidationHandlerWrapper<ID extends OperationId>(
   operationId: ID
@@ -192,26 +184,12 @@ function createValidationHandlerWrapper<ID extends OperationId>(
         },
       }
 
-      try {
-        const result = await handler(req, modifiedRes, next)
-
-        if (result === undefined) {
-          return next()
-        }
-
-        // TODO: And validate it here
-        const isStatusDefined =
-          'status' in result &&
-          'body' in result &&
-          typeof result.status === 'number'
-
-        const normalizedResult = isStatusDefined
-          ? result
-          : { status: 200, body: result }
-        res.status(normalizedResult.status).send(normalizedResult.status)
-      } catch (err) {
-        return next(err)
-      }
+      return handler(
+        req,
+        // @ts-expect-error
+        modifiedRes,
+        next
+      )
     }
   }
 }
@@ -226,4 +204,4 @@ export const validate = Object.fromEntries(
   Object.entries(schemas).map(([key]) => {
     return [key, createValidationHandlerWrapper(key as keyof typeof schemas)]
   })
-) as { [K in keyof typeof schemas]: WrapHandlerWithValidation<K> }
+) as unknown as { [K in keyof typeof schemas]: WrapHandlerWithValidation<K> }
