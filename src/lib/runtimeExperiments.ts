@@ -20,6 +20,8 @@
 // since it's all static - not `T` variable to do a cheeky `T extends ...`, etc.
 //----------------------------------------------------------------------
 
+type Digit = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
+
 type Req = {
   addPet: {
     responseBody:
@@ -35,44 +37,52 @@ type ResponseBody<ID extends keyof Req, Status> = Extract<
   { status: Status }
 >['body']
 
-type StatusCategoriesXX = `${1 | 2 | 3 | 4 | 5}${number}${number}`
-type GetStatusCategory<T> = T extends `${infer First}XX` ? `${First}XX` : never
-type GetStatusCategoryMatcher<T> = T extends `${infer First}XX`
-  ? `${First}${number}${number}`
+type AllStatuses = `${1 | 2 | 3 | 4 | 5}${Digit}${Digit}`
+type StatusExact<T> = T extends `${number}` ? T : never
+type StatusCategory<T> = T extends `${infer First}XX`
+  ? `${First}${Digit}${Digit}`
   : never
-type GetStatusExact<T> = T extends `${number}` ? T : never
+type StatusCategoryXX<T> = T extends `${infer First}${number}`
+  ? `${First}XX`
+  : never
 
 type Values<T extends object> = T[keyof T]
 type ResponseStatus<ID extends keyof Req> = Req[ID]['responseBody']['status']
 
 type ResponseReturnExact<ID extends keyof Req> = Values<{
-  [Status in GetStatusExact<ResponseStatus<ID>>]: {
+  [Status in StatusExact<ResponseStatus<ID>>]: {
     status: Status
     body: ResponseBody<ID, Status>
   }
 }>
 
 type ResponseReturnCategory<ID extends keyof Req> = Values<{
-  [Status in GetStatusCategory<ResponseStatus<ID>>]: {
-    status: GetStatusCategoryMatcher<Status>
-    body: ResponseBody<ID, Status>
+  [Status in Exclude<
+    StatusCategory<ResponseStatus<ID>>,
+    StatusExact<ResponseStatus<ID>>
+  >]: {
+    status: Status
+    body: ResponseBody<ID, StatusCategoryXX<Status>>
   }
 }>
 
-type ResponseReturnDefault<ID extends keyof Req> = Values<{
-  [Status in Exclude<
-    StatusCategoriesXX,
-    GetStatusCategoryMatcher<ResponseStatus<ID>>
-  >]: {
-    status: Status
-    body: ResponseBody<ID, 'default'>
-  }
-}>
+type ResponseReturnDefault<ID extends keyof Req> = {
+  status: Exclude<
+    AllStatuses,
+    StatusExact<ResponseStatus<ID>> | StatusCategory<ResponseStatus<ID>>
+  >
+  body: ResponseBody<ID, 'default'>
+}
 
 type ResponseReturn<ID extends keyof Req> =
   | ResponseReturnExact<ID>
   | ResponseReturnCategory<ID>
   | ResponseReturnDefault<ID>
+
+type Greg = Exclude<
+  StatusCategory<ResponseStatus<'addPet'>>,
+  StatusExact<ResponseStatus<'addPet'>>
+>
 
 type A = ResponseReturnExact<'addPet'>
 type B = ResponseReturnCategory<'addPet'>
@@ -80,8 +90,8 @@ type C = ResponseReturnDefault<'addPet'>
 
 // Testing
 const a: ResponseReturn<'addPet'> = {
-  status: '404',
-  body: { foo: '404!' },
+  status: '300',
+  body: { foo: 'default!' },
 }
 const b: ResponseReturn<'addPet'> = {
   status: '200',
@@ -89,12 +99,13 @@ const b: ResponseReturn<'addPet'> = {
 }
 const c: ResponseReturn<'addPet'> = {
   status: '200',
-  body: { foo: 'default!' },
+  body: { foo: '200!' },
 }
 const d: ResponseReturn<'addPet'> = {
   status: '403',
   body: { foo: 'four!' },
 }
+
 const e: ResponseReturn<'addPet'> = {
   status: '201',
   body: { foo: 'default!' },
