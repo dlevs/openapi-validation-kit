@@ -95,7 +95,7 @@ export class ValidationError extends Error {
   }
 }
 
-export function createValidator<T>(id: string) {
+function createValidator<T>(id: string) {
   return function validate(data: unknown): asserts data is T {
     const schema = schemaMeta[id]
 
@@ -111,7 +111,7 @@ export function createValidator<T>(id: string) {
   }
 }
 
-type ValidateFn<T> = (data: unknown) => T
+type ValidateFn<T> = (data: any) => asserts data is T
 
 export const validators = Object.fromEntries(
   // TODO: Object.keys
@@ -152,6 +152,6 @@ export const validators = Object.fromEntries(
     responseBody: <Status extends number>(
       data: unknown,
       status: Status
-    ) => ResponseBody<ID, Status>
+    ) => asserts data is ResponseBody<ID, Status>
   }
 }
