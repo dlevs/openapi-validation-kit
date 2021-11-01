@@ -4,6 +4,7 @@ import prettier from 'prettier'
 import type { OpenAPIV3 } from 'openapi-types'
 import { createSchemaObj, parseApiPaths } from './lib/schemaUtils'
 import { rootPath } from './lib/util'
+import { camelCase, upperFirst } from 'lodash'
 
 main().catch((err) => {
   console.error(err)
@@ -111,6 +112,34 @@ async function main() {
 
   await Promise.all([
     fs.writeFile(rootPath('./dist/Requests.d.ts'), prettifiedTypesCode),
+    // TODO: Tidy this file, and don't import from "../src". The validators should all be part of an output bundle, and should output to a JS and TS declaration file ("pre-compiled TS")
+    // Document why we need this file in this format https://github.com/microsoft/TypeScript/issues/41047
+    fs.writeFile(
+      rootPath('./dist/validators.ts'),
+      [
+        `import { validators } from '../src/lib/runtime/validators'`,
+        '',
+        ...Object.keys(schemasTidied).flatMap((id) => {
+          const createExport = (prop: string) => {
+            return `export const ${camelCase(
+              `validate${upperFirst(id)}${upperFirst(prop)}`
+            )}: typeof validators[${JSON.stringify(id)}][${JSON.stringify(
+              prop
+            )}] = validators[${JSON.stringify(id)}].${prop}`
+          }
+
+          return [
+            createExport('params'),
+            createExport('query'),
+            createExport('headers'),
+            createExport('requestBody'),
+            createExport('responseBody'),
+            '',
+          ]
+        }),
+        '',
+      ].join('\n')
+    ),
     fs.writeFile(
       rootPath('./dist/schemas.json'),
       JSON.stringify(

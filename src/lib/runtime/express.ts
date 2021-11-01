@@ -69,14 +69,6 @@ function createHandlerWrapper<ID extends OperationId>(operationId: ID) {
   }
 }
 
-const foo: unknown = {}
-
-const assertIsPet: (foo: unknown) => asserts foo is Pet =
-  validators.addPet.requestBody
-assertIsPet(foo)
-
-foo
-
 interface ResponseSend<T> {
   send(data: T): void
   json(data: T): void

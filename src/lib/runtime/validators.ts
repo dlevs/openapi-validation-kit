@@ -143,9 +143,9 @@ export const validators = Object.fromEntries(
       },
     ]
   })
-) as {
-  [ID in OperationId]: {
-    params: ValidateFn<Requests[ID]['params']>
+) as Readonly<{
+  [ID in OperationId]: Readonly<{
+    params: (data: any) => asserts data is Requests[ID]['params']
     query: ValidateFn<Requests[ID]['query']>
     headers: ValidateFn<Requests[ID]['headers']>
     requestBody: ValidateFn<Requests[ID]['requestBody']>
@@ -153,5 +153,5 @@ export const validators = Object.fromEntries(
       data: unknown,
       status: Status
     ) => asserts data is ResponseBody<ID, Status>
-  }
-}
+  }>
+}>

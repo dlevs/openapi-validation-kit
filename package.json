@@ -6,7 +6,7 @@
   "scripts": {
     "dev:compile": "nodemon --transpile-only --watch src src/compile.ts",
     "dev:serve": "nodemon --transpile-only --watch src src/server.temp.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest"
   },
   "keywords": [],
   "author": "",
@@ -24,11 +24,17 @@
     "prettier": "^2.4.1"
   },
   "devDependencies": {
+    "@swc/core": "^1.2.106",
+    "@swc/jest": "^0.2.5",
     "@types/express": "^4.17.13",
+    "@types/jest": "^27.0.2",
     "@types/lodash": "^4.14.175",
     "@types/node": "^16.10.3",
+    "@types/supertest": "^2.0.11",
+    "jest": "^27.3.1",
     "nodemon": "^2.0.13",
     "openapi-types": "^9.3.0",
+    "supertest": "^6.1.6",
     "ts-node": "^10.2.1",
     "typescript": "^4.5.0-dev.20211017"
   }
