@@ -63,16 +63,6 @@ async function main() {
     }
   )
 
-  // TODO: Move...
-  typesCode += ''
-  //`
-  //   export type StatusCode1XX = ${statusCode1XX.join(' | ')}
-  //   export type StatusCode2XX = ${statusCode2XX.join(' | ')}
-  //   export type StatusCode3XX = ${statusCode3XX.join(' | ')}
-  //   export type StatusCode4XX = ${statusCode4XX.join(' | ')}
-  //   export type StatusCode5XX = ${statusCode5XX.join(' | ')}
-  // `
-
   const prettifiedTypesCode = prettier.format(typesCode, {
     semi: false,
     singleQuote: true,

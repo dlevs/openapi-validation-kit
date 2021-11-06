@@ -34,26 +34,32 @@ function createHandlerWrapper<ID extends OperationId>(operationId: ID) {
         }
       }
 
-      // TODO: validate res
+      function send(status: number, body: unknown) {
+        try {
+          validators[operationId].responseBody(body, status)
+        } catch (err) {
+          if (err instanceof ValidationError) {
+            res.status(422)
+            return next(err)
+          }
+        }
+
+        res.status(status).send(body)
+        return modifiedRes
+      }
+
       const modifiedRes = {
         ...res,
+        send(body: unknown) {
+          return send(200, body)
+        },
         status<Status extends number>(status: Status) {
           // TODO: It's a bug that we don't set status if `send()` never called. Fix
 
           return {
             ...modifiedRes,
             send(body: unknown) {
-              try {
-                validators[operationId].responseBody(body, status)
-              } catch (err) {
-                if (err instanceof ValidationError) {
-                  res.status(422)
-                  return next(err)
-                }
-              }
-
-              res.status(status).send(body)
-              return modifiedRes
+              return send(status, body)
             },
           }
         },

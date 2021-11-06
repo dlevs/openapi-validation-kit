@@ -3,43 +3,77 @@
 // - 1 test file for plain validator functions
 // - 1 test file for outputted types
 
-import { validateAddPetRequestBody } from '../../dist/validators'
-
-const foo: unknown = {}
-
-// TODO: Fix error:
-// "Assertions require every name in the call target to be declared with an explicit type annotation.ts(2775)"
-// We may need to actually hardcode the output (compile it...)
-validateAddPetRequestBody(foo)
-foo
-
-import express from 'express'
-import { Pet } from '../../dist/Requests'
+import express, { NextFunction, Request, Response } from 'express'
 import { wrapRoute } from '../lib/runtime/express'
+import { ValidationError } from '../lib/runtime/validators'
 
-const app = express()
-// const validate = Validate({ validateResponses: true })
+export const app = express()
+
+// app.use(function loggingMiddleware(
+//   req: Request,
+//   res: Response,
+//   next: NextFunction
+// ): void {
+//   console.log(`Request: ${req.path}`, req.params)
+
+//   next()
+// })
 
 app.get(
   '/pets/:id',
-  wrapRoute.addPet(async (req, res) => {
-    try {
-      return res.send(await getPet())
-    } catch (err) {
-      return res.status(404).send({
-        code: 404,
-        message: 'Pet not found',
-        type: 'bad',
-      })
+  wrapRoute['find pet by id'](async (req, res) => {
+    switch (req.params.id) {
+      case 1:
+        return res.send({
+          id: 2,
+          name: 'Buddy',
+        })
+      case 2:
+        return res.send({
+          id: 2,
+          name: 'Buddy',
+          whyDoesTSNotMindThisProp: 'dog', // TODO: check this
+        })
+      case 10:
+        // @ts-expect-error
+        return res.send({})
+      case 11:
+        // @ts-expect-error
+        return res.send({ id: 'Bleh', name: 'La' })
+      case 12:
+        // @ts-expect-error
+        return res.send({ name: 'Floooof' })
+      case 13:
+        // @ts-expect-error
+        return res.send({ id: 13, name: 'Greg', tag: 9 })
+
+      case 20:
+        // TODO: Use a better example schema to test this
+        return res.status(400).send({
+          code: 400,
+          message: 'Pet not found',
+          type: 'general',
+        })
+      default:
+        return res.status(404).send({
+          code: 404,
+          message: 'Pet not found',
+          type: 'general',
+        })
     }
   })
 )
 
-const getPet = async (): Promise<Pet> => {
-  return {
-    id: 3,
-    name: 'Foo',
+app.use(function validationErrorMiddleware(
+  err: unknown,
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void {
+  if (err instanceof ValidationError) {
+    res.send({ error: err.message })
+    return
   }
-}
 
-// app.listen(3000)
+  next()
+})

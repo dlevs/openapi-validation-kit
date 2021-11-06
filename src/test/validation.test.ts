@@ -1,5 +1,7 @@
 import { validateAddPetRequestBody } from '../../dist/validators'
 
+// TODO: swc doesn't type check (I think), so make sure we're including test files in normal tsc compiled output
+
 describe('Foo TODO', () => {
   test('it TODO', () => {
     // @ts-expect-error
