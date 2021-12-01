@@ -4,8 +4,8 @@
 // - 1 test file for outputted types
 
 import express, { NextFunction, Request, Response } from 'express'
-import { wrapRoute } from '../lib/runtime/express'
-import { ValidationError } from '../lib/runtime/validators'
+import { wrapRoute } from '../lib/runtime/express.js'
+import { ValidationError } from '../lib/runtime/validators.js'
 
 export const app = express()
 

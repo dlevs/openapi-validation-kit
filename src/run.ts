@@ -1,21 +1,13 @@
-import fs from 'fs/promises'
+import fs from 'node:fs/promises'
 import { compile } from 'json-schema-to-typescript'
 import prettier from 'prettier'
 import type { OpenAPIV3 } from 'openapi-types'
-import { createSchemaObj, parseApiPaths } from './lib/schemaUtils'
-import { rootPath } from './lib/util'
-import { camelCase, upperFirst } from 'lodash'
+import { createSchemaObj, parseApiPaths } from './lib/schemaUtils.js'
+import { rootPath } from './lib/util.js'
+import { camelCase, upperFirst } from 'lodash-es'
 
-main().catch((err) => {
-  console.error(err)
-  process.exit(1)
-})
-
-async function main() {
-  const spec: OpenAPIV3.Document = JSON.parse(
-    await fs.readFile(rootPath('./examples/petstore.json'), 'utf-8')
-  )
-
+// TODO: Rename
+export async function run(spec: OpenAPIV3.Document) {
   /**
    * Schemas we'll pass to json-schema-to-typescript to generate
    * the type shape we want, complete with things like `oneOf: []`
@@ -103,10 +95,15 @@ async function main() {
   await Promise.all([
     fs.writeFile(rootPath('./dist/Requests.d.ts'), prettifiedTypesCode),
     // TODO: Tidy this file, and don't import from "../src". The validators should all be part of an output bundle, and should output to a JS and TS declaration file ("pre-compiled TS")
-    // Document why we need this file in this format https://github.com/microsoft/TypeScript/issues/41047
     fs.writeFile(
       rootPath('./dist/validators.ts'),
       [
+        '// This file was automatically generated.',
+        '// It looks redundant, but is needed as TypeScript requires',
+        '// type guards to have explicit type annotations.',
+        '//',
+        '// See: https://github.com/microsoft/TypeScript/issues/41047',
+        '',
         `import { validators } from '../src/lib/runtime/validators'`,
         '',
         ...Object.keys(schemasTidied).flatMap((id) => {

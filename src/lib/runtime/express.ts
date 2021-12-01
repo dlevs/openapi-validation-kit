@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction, Handler } from 'express'
-import { Requests } from '../../../dist/Requests'
-import { OperationId, ResponseBody } from './types'
-import { ValidationError, validators } from './validators'
+import { Requests } from '../../../dist/Requests.js'
+import { OperationId, ResponseBody } from './types.js'
+import { ValidationError, validators } from './validators.js'
 
 export const wrapRoute = Object.fromEntries(
   // TODO: Object.key

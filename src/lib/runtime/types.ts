@@ -1,4 +1,4 @@
-import { Requests } from '../../../dist/Requests'
+import { Requests } from '../../../dist/Requests.js'
 
 // Status filter types
 export type StatusCategory<T extends number> =

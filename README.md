@@ -4,6 +4,9 @@
 
 TODO: High-level summary here
 
+Work-in-progress way to compile (TODO: Remove):
+`node dist/src/index.js compile -w ./examples/petstore.json`
+
 ## TODO
 
 - [x] Decide on an approach - `runtimeExperiments.ts` vs `runtime.ts`

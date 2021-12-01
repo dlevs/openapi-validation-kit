@@ -1,5 +1,5 @@
 import { OpenAPIV3 } from 'openapi-types'
-import { isNotNullish } from './typeUtils'
+import { isNotNullish } from './typeUtils.js'
 
 type SchemaObjectMap = Record<
   string,
