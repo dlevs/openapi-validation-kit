@@ -1,9 +1,7 @@
-import fs from 'node:fs/promises'
 import { compile } from 'json-schema-to-typescript'
 import prettier from 'prettier'
 import type { OpenAPIV3 } from 'openapi-types'
 import { createSchemaObj, parseApiPaths } from './lib/schemaUtils.js'
-import { rootPath } from './lib/util.js'
 import { camelCase, upperFirst } from 'lodash-es'
 
 // TODO: Rename
@@ -86,59 +84,47 @@ export async function run(spec: OpenAPIV3.Document) {
     })
   )
 
-  try {
-    await fs.stat(rootPath('./dist'))
-  } catch (err) {
-    await fs.mkdir(rootPath('./dist'))
-  }
-
-  await Promise.all([
-    fs.writeFile(rootPath('./dist/Requests.d.ts'), prettifiedTypesCode),
+  return {
+    'Requests.d.ts': prettifiedTypesCode,
     // TODO: Tidy this file, and don't import from "../src". The validators should all be part of an output bundle, and should output to a JS and TS declaration file ("pre-compiled TS")
-    fs.writeFile(
-      rootPath('./dist/validators.ts'),
-      [
-        '// This file was automatically generated.',
-        '// It looks redundant, but is needed as TypeScript requires',
-        '// type guards to have explicit type annotations.',
-        '//',
-        '// See: https://github.com/microsoft/TypeScript/issues/41047',
-        '',
-        `import { validators } from '../src/lib/runtime/validators'`,
-        '',
-        ...Object.keys(schemasTidied).flatMap((id) => {
-          const createExport = (prop: string) => {
-            return `export const ${camelCase(
-              `validate${upperFirst(id)}${upperFirst(prop)}`
-            )}: typeof validators[${JSON.stringify(id)}][${JSON.stringify(
-              prop
-            )}] = validators[${JSON.stringify(id)}].${prop}`
-          }
+    'validators.ts': [
+      '// This file was automatically generated.',
+      '// It looks redundant, but is needed as TypeScript requires',
+      '// type guards to have explicit type annotations.',
+      '//',
+      '// See: https://github.com/microsoft/TypeScript/issues/41047',
+      '',
+      `import { validators } from '../src/lib/runtime/validators'`,
+      '',
+      ...Object.keys(schemasTidied).flatMap((id) => {
+        const createExport = (prop: string) => {
+          return `export const ${camelCase(
+            `validate${upperFirst(id)}${upperFirst(prop)}`
+          )}: typeof validators[${JSON.stringify(id)}][${JSON.stringify(
+            prop
+          )}] = validators[${JSON.stringify(id)}].${prop}`
+        }
 
-          return [
-            createExport('params'),
-            createExport('query'),
-            createExport('headers'),
-            createExport('requestBody'),
-            createExport('responseBody'),
-            '',
-          ]
-        }),
-        '',
-      ].join('\n')
+        return [
+          createExport('params'),
+          createExport('query'),
+          createExport('headers'),
+          createExport('requestBody'),
+          createExport('responseBody'),
+          '',
+        ]
+      }),
+      '',
+    ].join('\n'),
+    'schemas.json': JSON.stringify(
+      schemasTidied,
+      (key, value) => {
+        if (key === 'tsType') {
+          return undefined
+        }
+        return value
+      },
+      `\t`
     ),
-    fs.writeFile(
-      rootPath('./dist/schemas.json'),
-      JSON.stringify(
-        schemasTidied,
-        (key, value) => {
-          if (key === 'tsType') {
-            return undefined
-          }
-          return value
-        },
-        `\t`
-      )
-    ),
-  ])
+  }
 }

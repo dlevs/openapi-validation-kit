@@ -1,3 +1,5 @@
+// TODO: Rename. "schemaUtils" is not really it
+
 import { OpenAPIV3 } from 'openapi-types'
 import { isNotNullish } from './typeUtils.js'
 

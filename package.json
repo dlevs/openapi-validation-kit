@@ -23,6 +23,7 @@
     "json-schema-to-typescript": "^10.1.5",
     "lodash-es": "^4.17.21",
     "ora": "^6.0.1",
+    "picocolors": "^1.0.0",
     "prettier": "^2.4.1"
   },
   "devDependencies": {
