@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction, Handler } from 'express'
-import { Requests } from '../../../dist/Requests.js'
+import { Requests } from '../../dist/Requests.js'
 import { OperationId, ResponseBody } from './types.js'
 import { ValidationError, validators } from './validators.js'
 
