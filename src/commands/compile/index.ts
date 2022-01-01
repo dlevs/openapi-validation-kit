@@ -101,7 +101,7 @@ export async function compileSpecAndWriteOutput(
 
   await Promise.all([
     ...Object.entries(artifacts).map(([filename, data]) => {
-      return fs.writeFile(path.join(outDir, 'data', filename), data)
+      return fs.writeFile(path.join(outDir, filename), data)
     }),
     ...runtimeFiles.map((runtimeFile) => {
       return fs.copyFile(
@@ -189,9 +189,8 @@ export async function createSpecArtifacts(
   )
 
   return {
-    'Requests.d.ts': formatters.typeScript(typesCode, options),
-    // TODO: Tidy this file, and don't import from "../src". The validators should all be part of an output bundle, and should output to a JS and TS declaration file ("pre-compiled TS")
-    'validators.ts': formatters.typeScript(
+    'data/Requests.d.ts': formatters.typeScript(typesCode, options),
+    'data/validators.ts': formatters.typeScript(
       [
         '// This file was automatically generated.',
         '// It looks redundant, but is needed as TypeScript requires',
@@ -223,7 +222,22 @@ export async function createSpecArtifacts(
       ].join('\n'),
       options
     ),
-    'schemas.json': formatters.json(schemasTidied),
+    'data/schemas.json': formatters.json(schemasTidied),
+    'package.json': formatters.json({
+      description: 'Automatically generated OpenAPI validation library',
+      type: 'module',
+      export: './data/validators.js',
+      peerDependencies: {
+        ajv: '8.x',
+        'ajv-formats': '2.x',
+        '@types/express': '4.x',
+      },
+      peerDependenciesMeta: {
+        '@types/express': {
+          optional: true,
+        },
+      },
+    }),
   }
 }
 
