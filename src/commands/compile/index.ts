@@ -1,14 +1,17 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import mkdirp from 'mkdirp'
 import { hrtime } from 'node:process'
 import ora from 'ora'
+import { globby } from 'globby'
 import chokidar from 'chokidar'
 import colors from 'picocolors'
 import { type OpenAPIV3 } from 'openapi-types'
 import prettier from 'prettier'
 import { compile as compileJsonSchema } from 'json-schema-to-typescript'
 import { camelCase, upperFirst } from 'lodash-es'
-import { isNotNullish } from '../../lib/typeUtils.js'
+import { indent, isNotNullish } from '../../lib/utils.js'
 
 interface CommandOptions {
   watch: boolean
@@ -43,7 +46,13 @@ export async function compileCommand(
       spinner.succeed(getMessage('Compiled!', startTime))
     } catch (err) {
       spinner.fail(
-        getMessage(colors.red(`Failed to parse "${source}".`), startTime)
+        getMessage(
+          [
+            colors.red(`Failed to compile "${source}".`),
+            colors.dim(indent((err as Error).stack!)),
+          ].join('\n'),
+          startTime
+        )
       )
       return err as Error
     }
@@ -53,13 +62,20 @@ export async function compileCommand(
     const endTime = hrtime.bigint()
     const execTimeMs = Number((endTime - startTime) / BigInt(1e6))
 
-    const output = [colors.blue(`[${execTimeMs}ms]`), message]
+    const execTimeFormatted = colors.blue(`[${execTimeMs}ms]`)
+    const output = [`${execTimeFormatted} ${message}`]
+    const isMultiLine = message.includes('\n')
 
     if (options.watch) {
-      output.push(colors.dim(`Watching for changes...`))
+      const waitMessage = colors.dim(`Watching for changes...`)
+      if (isMultiLine) {
+        output.push(indent(waitMessage))
+      } else {
+        output.push(waitMessage)
+      }
     }
 
-    return output.join(' ')
+    return output.join('\n')
   }
 }
 
@@ -78,18 +94,22 @@ export async function compileSpecAndWriteOutput(
   )
 
   const artifacts = await createSpecArtifacts(spec, options)
+  const __dirname = path.dirname(fileURLToPath(import.meta.url))
+  const runtimeFiles = await globby(path.join(__dirname, './runtime/*.*'))
 
-  try {
-    await fs.stat(path.join(outDir, './dist'))
-  } catch (err) {
-    await fs.mkdir(path.join(outDir, './dist'))
-  }
+  await mkdirp(path.join(outDir, 'data'))
 
-  await Promise.all(
-    Object.entries(artifacts).map(([filename, data]) => {
-      return fs.writeFile(path.join(outDir, filename), data)
-    })
-  )
+  await Promise.all([
+    ...Object.entries(artifacts).map(([filename, data]) => {
+      return fs.writeFile(path.join(outDir, 'data', filename), data)
+    }),
+    ...runtimeFiles.map((runtimeFile) => {
+      return fs.copyFile(
+        runtimeFile,
+        path.join(outDir, path.basename(runtimeFile))
+      )
+    }),
+  ])
 }
 
 export async function createSpecArtifacts(
@@ -179,7 +199,7 @@ export async function createSpecArtifacts(
         '//',
         '// See: https://github.com/microsoft/TypeScript/issues/41047',
         '',
-        `import { validators } from '../src/commands/compile/runtime/validators'`,
+        `import { validators } from '../validatorsBase.js'`,
         '',
         ...Object.keys(schemasTidied).flatMap((id) => {
           const createExport = (prop: string) => {
