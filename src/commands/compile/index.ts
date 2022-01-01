@@ -8,7 +8,7 @@ import { type OpenAPIV3 } from 'openapi-types'
 import prettier from 'prettier'
 import { compile as compileJsonSchema } from 'json-schema-to-typescript'
 import { camelCase, upperFirst } from 'lodash-es'
-import { isNotNullish } from '../lib/typeUtils.js'
+import { isNotNullish } from '../../lib/typeUtils.js'
 
 interface CommandOptions {
   watch: boolean
@@ -179,7 +179,7 @@ export async function createSpecArtifacts(
         '//',
         '// See: https://github.com/microsoft/TypeScript/issues/41047',
         '',
-        `import { validators } from '../src/lib/runtime/validators'`,
+        `import { validators } from '../src/commands/compile/runtime/validators'`,
         '',
         ...Object.keys(schemasTidied).flatMap((id) => {
           const createExport = (prop: string) => {

@@ -3,8 +3,8 @@
 import Ajv, { AnySchema, ErrorObject } from 'ajv'
 import addFormats from 'ajv-formats'
 // TODO: Naming
-import rawSchemas from '../../../dist/schemas.json'
-import { Requests } from '../../dist/Requests.js'
+import rawSchemas from './data/schemas.json'
+import { Requests } from './data/Requests.js'
 import { OperationId, ResponseBody } from './types.js'
 import { AnyValidateFunction } from 'ajv/dist/core.js'
 

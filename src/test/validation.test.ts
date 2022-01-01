@@ -1,4 +1,4 @@
-import { validateAddPetRequestBody } from '../../dist/validators.js'
+import { validateAddPetRequestBody } from '../commands/compile/runtime/data/validators.js'
 
 // TODO: swc doesn't type check (I think), so make sure we're including test files in normal tsc compiled output
 

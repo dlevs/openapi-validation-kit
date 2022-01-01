@@ -1,4 +1,11 @@
-import { Requests } from '../../dist/Requests.js'
+// ------------------------------------------------------------------
+// Example file.
+//
+// This file is overwritten by when running the CLI. It exists for
+// development purposes, so we have types to work with.
+// ------------------------------------------------------------------
+
+import { Requests } from './data/Requests.js'
 
 // Status filter types
 export type StatusCategory<T extends number> =

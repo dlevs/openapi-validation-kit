@@ -1,5 +1,5 @@
 import { Command } from 'commander'
-import { compileCommand } from './commands/compile.js'
+import { compileCommand } from './commands/compile/index.js'
 
 const program = new Command()
 
