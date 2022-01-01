@@ -1,3 +1,9 @@
-node_modules
-dist
+# System / dependencies
 .DS_Store
+node_modules
+
+# Compiled code output
+dist
+
+# CLI test output
+out
