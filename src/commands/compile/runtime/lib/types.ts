@@ -5,7 +5,7 @@
 // development purposes, so we have types to work with.
 // ------------------------------------------------------------------
 
-import { Requests } from './data/Requests.js'
+import { Requests } from '../data/types.js'
 
 // Status filter types
 export type StatusCategory<T extends number> =

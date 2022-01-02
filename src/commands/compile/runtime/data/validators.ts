@@ -11,7 +11,7 @@
 //
 // See: https://github.com/microsoft/TypeScript/issues/41047
 
-import { validators } from '../validatorsBase'
+import { validators } from '../lib/validatorsBase.js'
 
 export const validateFindPetsParams: typeof validators['findPets']['params'] =
   validators['findPets'].params

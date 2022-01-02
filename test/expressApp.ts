@@ -3,11 +3,9 @@
 // - 1 test file for plain validator functions
 // - 1 test file for outputted types
 
-import express, { NextFunction, Request, Response } from 'express'
+import express, { ErrorRequestHandler } from 'express'
+import { OpenAPIKitValidationError } from 'openapi-validation-kit-test-output'
 import { wrapRoute } from 'openapi-validation-kit-test-output/express'
-// TODO: Make this better (not nested route). Also fix wrong import path for top level "openapi-validation-kit-test-output"
-// import { ValidationError } from 'openapi-validation-kit-test-output/data/validators'
-import { ValidationError } from 'openapi-validation-kit-test-output/validatorsBase'
 
 export const app = express()
 
@@ -66,16 +64,13 @@ app.get(
   })
 )
 
-app.use(function validationErrorMiddleware(
-  err: unknown,
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void {
-  if (err instanceof ValidationError) {
+const errorRequestHandler: ErrorRequestHandler = (err, req, res, next) => {
+  if (err instanceof OpenAPIKitValidationError) {
     res.send({ error: err.message })
     return
   }
 
   next()
-})
+}
+
+app.use(errorRequestHandler)

@@ -105,19 +105,32 @@ export async function compileSpecAndWriteOutput(
 
   const artifacts = await createSpecArtifacts(spec, options)
   const __dirname = path.dirname(fileURLToPath(import.meta.url))
-  const runtimeFiles = await globby(path.join(__dirname, './runtime/*.*'))
+  const runtimeFilesAbsolute = await globby([
+    path.join(__dirname, './runtime/**/*'),
+    // Don't copy over the example data - that is what we are generating from the schema.
+    '!' + path.join(__dirname, './runtime/data/**/*'),
+  ])
+  const runtimeFiles = runtimeFilesAbsolute.map((filename) => {
+    return {
+      source: filename,
+      destination: path.join(
+        outDir,
+        path.relative(path.join(__dirname, 'runtime'), filename)
+      ),
+    }
+  })
 
-  await mkdirp(path.join(outDir, 'data'))
+  await Promise.all([
+    mkdirp(path.join(outDir, 'lib')),
+    mkdirp(path.join(outDir, 'data')),
+  ])
 
   await Promise.all([
     ...Object.entries(artifacts).map(([filename, data]) => {
       return fs.writeFile(path.join(outDir, filename), data)
     }),
-    ...runtimeFiles.map((runtimeFile) => {
-      return fs.copyFile(
-        runtimeFile,
-        path.join(outDir, path.basename(runtimeFile))
-      )
+    ...runtimeFiles.map(({ source, destination }) => {
+      return fs.copyFile(source, destination)
     }),
   ])
 }
@@ -199,7 +212,10 @@ export async function createSpecArtifacts(
   )
 
   return {
-    'data/Requests.d.ts': formatters.typeScript(typesCode, options),
+    // Types
+    'data/types.js': 'export {}\n', // Prevent error. We export only types from this file.
+    'data/types.d.ts': formatters.typeScript(typesCode, options),
+    // Validators
     'data/validators.js': formatters.typeScript(
       getValidatorsCode(schemasTidied, false),
       options
@@ -208,6 +224,7 @@ export async function createSpecArtifacts(
       getValidatorsCode(schemasTidied, true),
       options
     ),
+    // Misc
     'data/schemas.js': formatters.typeScript(
       `export default ${JSON.stringify(schemasTidied, null, 2)}`,
       options
@@ -215,7 +232,7 @@ export async function createSpecArtifacts(
     'package.json': formatters.json({
       description: 'Automatically generated OpenAPI validation library',
       type: 'module',
-      export: './data/validators.js',
+      export: './index.js',
       dependencies: {
         ajv: '^8.8.2',
         'ajv-formats': '^2.1.1',
@@ -414,14 +431,13 @@ function parseApiResponseBody(responses: OpenAPIV3.ResponsesObject) {
  */
 function getValidatorsCode(schemas: Record<string, unknown>, types: boolean) {
   return [
-    // TODO: The folder structure is weird. Move the important stuff to top-level so you can do import from "module-name/express" / "module-name/validators"
     '// This file was automatically generated.',
     '// It looks redundant, but is needed as TypeScript requires',
     '// type guards to have explicit type annotations.',
     '//',
     '// See: https://github.com/microsoft/TypeScript/issues/41047',
     '',
-    `import { validators } from '../validatorsBase.js'`,
+    `import { validators } from '../lib/validatorsBase.js'`,
     '',
     ...Object.keys(schemas).flatMap((id) => {
       const createCodeExport = (prop: string) => {

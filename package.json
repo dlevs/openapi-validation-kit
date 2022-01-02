@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "type": "module",
-  "export": "index.js",
+  "bin": "./dist/index.js",
   "scripts": {
     "compile:cli": "tsc",
     "compile:example": "node dist/index.js compile --fast ./test/petstore.json ./node_modules/openapi-validation-kit-test-output",
