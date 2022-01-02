@@ -7,3 +7,6 @@ dist
 
 # CLI test output
 out
+
+# Bundled dependencies used in CLI output
+dependenciesDist

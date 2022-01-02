@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import mkdirp from 'mkdirp'
 import { hrtime } from 'node:process'
 import ora from 'ora'
+import { execa } from 'execa'
 import { globby } from 'globby'
 import chokidar from 'chokidar'
 import colors from 'picocolors'
@@ -24,9 +25,7 @@ export async function compileCommand(
   outDir: string,
   options: CommandOptions
 ) {
-  let spinner = ora({ isSilent: options.quiet })
-  spinner.start()
-  spinner.text = 'Compiling...'
+  const spinner = ora({ isSilent: options.quiet })
 
   if (options.watch) {
     chokidar.watch(source).on('all', () => {
@@ -40,9 +39,18 @@ export async function compileCommand(
   }
 
   async function compileSafe() {
+    spinner.start()
+    spinner.text = 'Compiling...'
+
     const startTime = hrtime.bigint()
     try {
       await compileSpecAndWriteOutput({ source, outDir }, options)
+      try {
+        await fs.stat(path.join(outDir, 'node_modules'))
+      } catch (err) {
+        spinner.text = 'Bundle compiled. Installing dependencies...'
+        await execa('npm', ['install'], { cwd: outDir })
+      }
       spinner.succeed(getMessage('Compiled!', startTime))
     } catch (err) {
       spinner.fail(
@@ -55,6 +63,8 @@ export async function compileCommand(
         )
       )
       return err as Error
+    } finally {
+      spinner.stop()
     }
   }
 
@@ -222,14 +232,19 @@ export async function createSpecArtifacts(
       ].join('\n'),
       options
     ),
-    'data/schemas.json': formatters.json(schemasTidied),
+    'data/schemas.js': formatters.typeScript(
+      `export default ${JSON.stringify(schemasTidied, null, 2)}`,
+      options
+    ),
     'package.json': formatters.json({
       description: 'Automatically generated OpenAPI validation library',
       type: 'module',
       export: './data/validators.js',
+      dependencies: {
+        ajv: '^8.8.2',
+        'ajv-formats': '^2.1.1',
+      },
       peerDependencies: {
-        ajv: '8.x',
-        'ajv-formats': '2.x',
         '@types/express': '4.x',
       },
       peerDependenciesMeta: {

@@ -9,16 +9,9 @@ Work-in-progress way to compile (TODO: Remove):
 
 ## TODO
 
-- [x] Decide on an approach - `runtimeExperiments.ts` vs `runtime.ts`
-- [ ] Expose generic functions for validation
-- [ ] Expose express functions under `/express` path
+- [ ] Document microbundle, and why types are peerDependency
 - [ ] Improve validation error messages
-- [ ] Build CLI
-  - [ ] Accept args
-  - [ ] Have it generate a tidy bundle with a package.json pointing to entry points
-  - [ ] Add help text
 - [ ] Compile all TS down to JS / .d.ts files
-- [x] Add handlers for direct return (objects with "status" properties, and those without (200))
 - [ ] Add tests
   - [ ] CLI
   - [ ] supertest (api)

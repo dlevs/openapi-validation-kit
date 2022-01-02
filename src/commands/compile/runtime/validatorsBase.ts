@@ -1,12 +1,10 @@
-// @ts-nocheck TODO: TURN THIS OFF
-
 import Ajv, { AnySchema, ErrorObject } from 'ajv'
+import { AnyValidateFunction } from 'ajv/dist/core.js'
 import addFormats from 'ajv-formats'
 // TODO: Naming
-import rawSchemas from './data/schemas.json'
+import rawSchemas from './data/schemas.js'
 import { Requests } from './data/Requests.js'
 import { OperationId, ResponseBody } from './types.js'
-import { AnyValidateFunction } from 'ajv/dist/core.js'
 
 // TODO: Options
 const ajv = new Ajv({ coerceTypes: 'array', useDefaults: 'empty' })
