@@ -9,9 +9,8 @@ Work-in-progress way to compile (TODO: Remove):
 
 ## TODO
 
-- [ ] Document microbundle, and why types are peerDependency
+- [ ] Document why types are peerDependency
 - [ ] Improve validation error messages
-- [ ] Compile all TS down to JS / .d.ts files
 - [ ] Add tests
   - [ ] CLI
   - [ ] supertest (api)

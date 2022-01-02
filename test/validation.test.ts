@@ -1,4 +1,5 @@
-import { validateAddPetRequestBody } from '../commands/compile/runtime/data/validators.js'
+// TODO: Improve this filepath
+import { validateAddPetRequestBody } from 'openapi-validation-kit-test-output/data/validators'
 
 // TODO: swc doesn't type check (I think), so make sure we're including test files in normal tsc compiled output
 

@@ -414,6 +414,7 @@ function parseApiResponseBody(responses: OpenAPIV3.ResponsesObject) {
  */
 function getValidatorsCode(schemas: Record<string, unknown>, types: boolean) {
   return [
+    // TODO: The folder structure is weird. Move the important stuff to top-level so you can do import from "module-name/express" / "module-name/validators"
     '// This file was automatically generated.',
     '// It looks redundant, but is needed as TypeScript requires',
     '// type guards to have explicit type annotations.',

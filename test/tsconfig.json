@@ -1,0 +1,10 @@
+// We have this separate tsconfig.json file because we must first compile the
+// CLI, which can then be run to generate the example output module that the
+// tests depend upon.
+{
+  "extends": "../tsconfig.json",
+  "include": ["."],
+  "compilerOptions": {
+    "noEmit": true
+  }
+}

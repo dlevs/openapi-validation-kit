@@ -1,5 +1,5 @@
 import request from 'supertest'
-import { app } from './expressApp.js'
+import { app } from './expressApp'
 
 describe('Request validation', () => {
   it('Accepts a good path', async () => {
