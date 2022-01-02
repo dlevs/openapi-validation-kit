@@ -200,36 +200,12 @@ export async function createSpecArtifacts(
 
   return {
     'data/Requests.d.ts': formatters.typeScript(typesCode, options),
-    'data/validators.ts': formatters.typeScript(
-      [
-        '// This file was automatically generated.',
-        '// It looks redundant, but is needed as TypeScript requires',
-        '// type guards to have explicit type annotations.',
-        '//',
-        '// See: https://github.com/microsoft/TypeScript/issues/41047',
-        '',
-        `import { validators } from '../validatorsBase.js'`,
-        '',
-        ...Object.keys(schemasTidied).flatMap((id) => {
-          const createExport = (prop: string) => {
-            return `export const ${camelCase(
-              `validate${upperFirst(id)}${upperFirst(prop)}`
-            )}: typeof validators[${JSON.stringify(id)}][${JSON.stringify(
-              prop
-            )}] = validators[${JSON.stringify(id)}].${prop}`
-          }
-
-          return [
-            createExport('params'),
-            createExport('query'),
-            createExport('headers'),
-            createExport('requestBody'),
-            createExport('responseBody'),
-            '',
-          ]
-        }),
-        '',
-      ].join('\n'),
+    'data/validators.js': formatters.typeScript(
+      getValidatorsCode(schemasTidied, false),
+      options
+    ),
+    'data/validators.d.ts': formatters.typeScript(
+      getValidatorsCode(schemasTidied, true),
       options
     ),
     'data/schemas.js': formatters.typeScript(
@@ -431,6 +407,45 @@ function parseApiResponseBody(responses: OpenAPIV3.ResponsesObject) {
   return {
     oneOf: bodies,
   }
+}
+
+/**
+ * Create the validators code.
+ */
+function getValidatorsCode(schemas: Record<string, unknown>, types: boolean) {
+  return [
+    '// This file was automatically generated.',
+    '// It looks redundant, but is needed as TypeScript requires',
+    '// type guards to have explicit type annotations.',
+    '//',
+    '// See: https://github.com/microsoft/TypeScript/issues/41047',
+    '',
+    `import { validators } from '../validatorsBase.js'`,
+    '',
+    ...Object.keys(schemas).flatMap((id) => {
+      const createCodeExport = (prop: string) => {
+        return `export const ${camelCase(
+          `validate${upperFirst(id)}${upperFirst(prop)}`
+        )} = validators[${JSON.stringify(id)}].${prop}`
+      }
+      const createTypeExport = (prop: string) => {
+        return `export declare const ${camelCase(
+          `validate${upperFirst(id)}${upperFirst(prop)}`
+        )}: typeof validators[${JSON.stringify(id)}][${JSON.stringify(prop)}]`
+      }
+      const createExport = types ? createTypeExport : createCodeExport
+
+      return [
+        createExport('params'),
+        createExport('query'),
+        createExport('headers'),
+        createExport('requestBody'),
+        createExport('responseBody'),
+        '',
+      ]
+    }),
+    '',
+  ].join('\n')
 }
 
 export function createSchemaObj<
