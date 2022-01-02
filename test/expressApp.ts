@@ -1,23 +1,8 @@
-// TODO: Rename this file + move. Have:
-// - 1 test file for express (supertest)
-// - 1 test file for plain validator functions
-// - 1 test file for outputted types
-
 import express, { ErrorRequestHandler } from 'express'
 import { OpenAPIKitValidationError } from 'openapi-validation-kit-test-output'
 import { wrapRoute } from 'openapi-validation-kit-test-output/express'
 
 export const app = express()
-
-// app.use(function loggingMiddleware(
-//   req: Request,
-//   res: Response,
-//   next: NextFunction
-// ): void {
-//   console.log(`Request: ${req.path}`, req.params)
-
-//   next()
-// })
 
 app.get(
   '/pets/:id',

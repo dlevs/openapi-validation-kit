@@ -5,9 +5,10 @@
   "type": "module",
   "bin": "./dist/index.js",
   "scripts": {
+    "clean": "rimraf ./dist && rimraf ./node_modules/openapi-validation-kit-test-output",
     "compile:cli": "tsc",
     "compile:example": "node dist/index.js compile --fast ./test/petstore.json ./node_modules/openapi-validation-kit-test-output",
-    "compile": "npm run compile:cli && npm run compile:example",
+    "compile": "npm run clean && npm run compile:cli && npm run compile:example",
     "test:test-types": "tsc --project ./test/tsconfig.json",
     "test:run": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js",
     "test": "npm run compile && npm run test:run && npm run test:test-types"
@@ -47,6 +48,7 @@
     "nodemon": "^2.0.15",
     "openapi-types": "^10.0.0",
     "regenerator-runtime": "0.13.9",
+    "rimraf": "^3.0.2",
     "supertest": "^6.1.6",
     "ts-node": "^10.4.0",
     "typescript": "^4.5.4"
