@@ -9,6 +9,7 @@ Work-in-progress way to compile (TODO: Remove):
 
 ## TODO
 
+- [ ] Document how testing works. Put readme file in both `test` and `runtime` directories
 - [ ] Document why types are peerDependency
 - [ ] Improve validation error messages
 - [ ] Add tests

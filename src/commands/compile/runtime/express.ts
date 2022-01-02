@@ -1,7 +1,8 @@
 import type { Request, Response, NextFunction, Handler } from 'express'
 import { Requests } from './data/types.js'
 import { OperationId, ResponseBody } from './lib/types.js'
-import { ValidationError, validators } from './lib/validatorsBase.js'
+import { ValidationError } from './lib/getValidators.js'
+import { validators } from './data/validators.js' // TODO: This will be inlining wrong types. Document how nothing outside `data` directory can reference anything inside of it. And really, does it still make sense to have dummy data there anymore? Probably not.
 
 export const wrapRoute = Object.fromEntries(
   // TODO: Object.key

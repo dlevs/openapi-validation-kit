@@ -279,38 +279,52 @@ const formatters = {
   },
 }
 
+const HTTP_METHODS = [
+  'get',
+  'put',
+  'post',
+  'delete',
+  'options',
+  'head',
+  'patch',
+  'trace',
+] as const
+
 export function parseApiPaths(paths: OpenAPIV3.PathsObject) {
-  const entries = Object.values(paths)
-    .filter(isNotNullish)
-    .map((path) => {
-      assertNotRef(path)
+  const entries = Object.entries(paths)
+    .flatMap(([path, pathMeta]) => {
+      // Filter out null values.
+      if (!pathMeta) {
+        return []
+      }
+
+      assertNotRef(pathMeta)
 
       // Pick the actual http methods
       return (
-        [
-          path.get,
-          path.put,
-          path.post,
-          path.delete,
-          path.options,
-          path.head,
-          path.patch,
-          path.trace,
-        ]
-          // Filter out those that don't exist
-          .filter(isNotNullish)
+        HTTP_METHODS
           // Fill in default values from path here, so each method
           // inherits the level above.
-          .map((method) => ({
-            ...method,
-            parameters: [
-              ...(path.parameters ?? []),
-              ...(method.parameters ?? []),
-            ],
-          }))
+          .flatMap((method) => {
+            const methodMeta = pathMeta[method]
+
+            // Filter out those that don't exist
+            if (!methodMeta) {
+              return []
+            }
+
+            return {
+              ...methodMeta,
+              operationId:
+                methodMeta.operationId ?? `${method.toUpperCase()} ${path}`,
+              parameters: [
+                ...(pathMeta.parameters ?? []),
+                ...(methodMeta.parameters ?? []),
+              ],
+            }
+          })
       )
     })
-    .flat()
     // Turn the raw OpenAPI operations into a format we can generate
     // schemas and types for.
     .map((method) => {
@@ -319,8 +333,7 @@ export function parseApiPaths(paths: OpenAPIV3.PathsObject) {
       const responseBody = parseApiResponseBody(method.responses)
 
       return [
-        // TODO: Assert operationId is defined
-        method.operationId!,
+        method.operationId,
         createSchemaObj(
           {
             params: path,
@@ -415,10 +428,17 @@ function parseApiResponseBody(responses: OpenAPIV3.ResponsesObject) {
     })
     .filter(isNotNullish)
 
-  // TODO: Check for method.operationId
-  // TODO: Check. Document. Add operation ID in here
+  // TODO: Check this... Seems a bit dodgy
   if (bodies.length === 0) {
-    throw new Error(`No responses found for operation.`)
+    // throw new Error(`No responses found for operation.`)
+    return {
+      oneOf: [
+        createSchemaObj({
+          status: { enum: ['200'], description: 'No response body defined' },
+          body: { tsType: 'unknown' } as any, // TODO: Type this properly
+        }),
+      ],
+    }
   }
 
   return {
@@ -437,8 +457,31 @@ function getValidatorsCode(schemas: Record<string, unknown>, types: boolean) {
     '//',
     '// See: https://github.com/microsoft/TypeScript/issues/41047',
     '',
-    `import { validators } from '../lib/validatorsBase.js'`,
-    '',
+    `import { getValidators } from '../lib/getValidators.js'`,
+    `import schemas from './schemas.js'`,
+    types
+      ? `
+        import type { ResponseBody } from '../lib/types.js'
+        import type { Requests } from './types.js'
+
+        type OperationId = keyof Requests
+
+        type ValidateFn<T> = (data: any) => asserts data is T
+
+        export declare const validators: Readonly<{
+          [ID in OperationId]: Readonly<{
+            params: (data: any) => asserts data is Requests[ID]['params']
+            query: ValidateFn<Requests[ID]['query']>
+            headers: ValidateFn<Requests[ID]['headers']>
+            requestBody: ValidateFn<Requests[ID]['requestBody']>
+            responseBody: <Status extends number>(
+              data: unknown,
+              status: Status
+            ) => asserts data is ResponseBody<ID, Status>
+          }>
+        }>
+    `
+      : '\nexport const validators = getValidators(schemas)',
     ...Object.keys(schemas).flatMap((id) => {
       const createCodeExport = (prop: string) => {
         return `export const ${camelCase(
@@ -462,7 +505,9 @@ function getValidatorsCode(schemas: Record<string, unknown>, types: boolean) {
       ]
     }),
     '',
-  ].join('\n')
+  ]
+    .filter(isNotNullish)
+    .join('\n')
 }
 
 export function createSchemaObj<

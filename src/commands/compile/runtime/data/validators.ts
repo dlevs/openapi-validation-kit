@@ -11,7 +11,28 @@
 //
 // See: https://github.com/microsoft/TypeScript/issues/41047
 
-import { validators } from '../lib/validatorsBase.js'
+import { getValidators } from '../lib/getValidators.js'
+import { ResponseBody } from '../lib/types.js'
+import { Requests } from './types.js'
+import schemas from './schemas.js'
+
+type OperationId = keyof Requests
+
+type ValidateFn<T> = (data: any) => asserts data is T
+
+// TODO: Sort dodgy types :(
+export const validators = getValidators(schemas as any) as Readonly<{
+  [ID in OperationId]: Readonly<{
+    params: (data: any) => asserts data is Requests[ID]['params']
+    query: ValidateFn<Requests[ID]['query']>
+    headers: ValidateFn<Requests[ID]['headers']>
+    requestBody: ValidateFn<Requests[ID]['requestBody']>
+    responseBody: <Status extends number>(
+      data: unknown,
+      status: Status
+    ) => asserts data is ResponseBody<ID, Status>
+  }>
+}>
 
 export const validateFindPetsParams: typeof validators['findPets']['params'] =
   validators['findPets'].params

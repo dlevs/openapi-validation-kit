@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { Command } from 'commander'
 import { compileCommand } from './commands/compile/index.js'
 
@@ -6,7 +8,7 @@ const program = new Command()
 program.version('0.0.1')
 
 program
-  .command('compile <source> <outDir>')
+  .command('compile <source> <outDir>', { isDefault: true })
   .option('-w, --watch', 'Watch source file and compile on change')
   .option('-q, --quiet', 'Suppress console output')
   .option('-f, --fast', 'Skip formatting for faster performance')
