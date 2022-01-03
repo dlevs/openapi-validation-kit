@@ -1,24 +1,7 @@
 import Ajv, { AnySchema, ErrorObject } from 'ajv'
 import { AnyValidateFunction } from 'ajv/dist/core.js'
 import addFormats from 'ajv-formats'
-import { OpenAPIV3 } from 'openapi-types'
-
-// TODO: Move
-interface RequestSchema {
-  params: OpenAPIV3.SchemaObject
-  query: OpenAPIV3.SchemaObject
-  headers: OpenAPIV3.SchemaObject
-  requestBody: OpenAPIV3.SchemaObject
-  responseBody: Record<string, OpenAPIV3.SchemaObject>
-}
-
-// interface RequestType {
-//   params: Record<string, unknown>
-//   query: Record<string, unknown>
-//   headers: Record<string, unknown>
-//   requestBody: unknown
-//   responseBody: { status: string; body: unknown }
-// }
+import { RequestSchema } from './types'
 
 // TODO: Options
 export function getValidators<Schema extends Record<string, RequestSchema>>(

@@ -1,4 +1,4 @@
-import type { Pet, NewPet, Error } from 'openapi-validation-kit-test-output'
+import type { Pet, NewPet, Error } from './out'
 
 expectType<Pet>({ name: 'Foofoo', id: 3, tags: ['Cool'] })
 expectType<NewPet>({ name: 'Ruffles' })

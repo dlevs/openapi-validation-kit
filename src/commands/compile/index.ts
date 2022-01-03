@@ -105,11 +105,9 @@ export async function compileSpecAndWriteOutput(
 
   const artifacts = await createSpecArtifacts(spec, options)
   const __dirname = path.dirname(fileURLToPath(import.meta.url))
-  const runtimeFilesAbsolute = await globby([
-    path.join(__dirname, './runtime/**/*'),
-    // Don't copy over the example data - that is what we are generating from the schema.
-    '!' + path.join(__dirname, './runtime/data/**/*'),
-  ])
+  const runtimeFilesAbsolute = await globby(
+    path.join(__dirname, './runtime/**/*')
+  )
   const runtimeFiles = runtimeFilesAbsolute.map((filename) => {
     return {
       source: filename,
@@ -120,10 +118,7 @@ export async function compileSpecAndWriteOutput(
     }
   })
 
-  await Promise.all([
-    mkdirp(path.join(outDir, 'lib')),
-    mkdirp(path.join(outDir, 'data')),
-  ])
+  await mkdirp(path.join(outDir, 'lib'))
 
   await Promise.all([
     ...Object.entries(artifacts).map(([filename, data]) => {
@@ -212,20 +207,34 @@ export async function createSpecArtifacts(
   )
 
   return {
+    // Entry point
+    'index.ts': formatters.typeScript(
+      `
+        export * from './validators.js'
+        export * from './types.js'
+
+        // Remap export so that we avoid name clash with the user's generated types.
+        export { ValidationError as OpenAPIKitValidationError } from './lib/getValidators.js'
+      `,
+      options
+    ),
     // Types
-    'data/types.js': 'export {}\n', // Prevent error. We export only types from this file.
-    'data/types.d.ts': formatters.typeScript(typesCode, options),
+    'types.js': 'export {}\n', // Prevent error. We export only types from this file.
+    'types.d.ts': formatters.typeScript(typesCode, options),
     // Validators
-    'data/validators.js': formatters.typeScript(
+    'validators.js': formatters.typeScript(
       getValidatorsCode(schemasTidied, false),
       options
     ),
-    'data/validators.d.ts': formatters.typeScript(
+    'validators.d.ts': formatters.typeScript(
       getValidatorsCode(schemasTidied, true),
       options
     ),
+    // Express
+    'express.js': formatters.typeScript(getExpressCode(false), options),
+    'express.d.ts': formatters.typeScript(getExpressCode(true), options),
     // Misc
-    'data/schemas.js': formatters.typeScript(
+    'schemas.js': formatters.typeScript(
       `export default ${JSON.stringify(schemasTidied, null, 2)}`,
       options
     ),
@@ -236,6 +245,7 @@ export async function createSpecArtifacts(
       dependencies: {
         ajv: '^8.8.2',
         'ajv-formats': '^2.1.1',
+        'openapi-types': '^10.0.0',
       },
       peerDependencies: {
         '@types/express': '4.x',
@@ -457,27 +467,23 @@ function getValidatorsCode(schemas: Record<string, unknown>, types: boolean) {
     '//',
     '// See: https://github.com/microsoft/TypeScript/issues/41047',
     '',
-    `import { getValidators } from '../lib/getValidators.js'`,
+    `import { getValidators } from './lib/getValidators.js'`,
     `import schemas from './schemas.js'`,
     types
       ? `
-        import type { ResponseBody } from '../lib/types.js'
+        import type { ResponseBody } from './lib/types.js'
         import type { Requests } from './types.js'
 
-        type OperationId = keyof Requests
-
-        type ValidateFn<T> = (data: any) => asserts data is T
-
         export declare const validators: Readonly<{
-          [ID in OperationId]: Readonly<{
+          [ID in keyof Requests]: Readonly<{
             params: (data: any) => asserts data is Requests[ID]['params']
-            query: ValidateFn<Requests[ID]['query']>
-            headers: ValidateFn<Requests[ID]['headers']>
-            requestBody: ValidateFn<Requests[ID]['requestBody']>
+            query: (data: any) => asserts data is Requests[ID]['query']
+            headers: (data: any) => asserts data is Requests[ID]['headers']
+            requestBody: (data: any) => asserts data is Requests[ID]['requestBody']
             responseBody: <Status extends number>(
               data: unknown,
               status: Status
-            ) => asserts data is ResponseBody<ID, Status>
+            ) => asserts data is ResponseBody<Requests[ID], Status>
           }>
         }>
     `
@@ -505,9 +511,35 @@ function getValidatorsCode(schemas: Record<string, unknown>, types: boolean) {
       ]
     }),
     '',
-  ]
-    .filter(isNotNullish)
-    .join('\n')
+  ].join('\n')
+}
+
+/**
+ * Create the express code.
+ *
+ * It's really just static, but it's not a valid TS file as the imports are for things
+ * that don't exist before this script is run.
+ */
+function getExpressCode(types: boolean) {
+  if (types) {
+    return `
+      // This file was automatically generated.
+
+      import type { WrapHandlerWithValidation } from './lib/getExpressWrappers.js'
+      import type { Requests } from './types.js'
+
+      export declare const wrapRoute: Readonly<{
+        [ID in keyof Requests]: WrapHandlerWithValidation<Requests[ID]>
+      }>
+    `
+  }
+  return `
+    // This file was automatically generated.
+
+    import { validators } from './validators.js'
+    import { getExpressWrappers } from './lib/getExpressWrappers.js'
+    export const wrapRoute = getExpressWrappers(validators)
+  `
 }
 
 export function createSchemaObj<

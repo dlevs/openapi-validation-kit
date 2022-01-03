@@ -1,6 +1,6 @@
 import express, { ErrorRequestHandler } from 'express'
-import { OpenAPIKitValidationError } from 'openapi-validation-kit-test-output'
-import { wrapRoute } from 'openapi-validation-kit-test-output/express'
+import { OpenAPIKitValidationError } from './out'
+import { wrapRoute } from './out/express'
 
 export const app = express()
 
@@ -48,6 +48,8 @@ app.get(
     }
   })
 )
+
+// TODO: Test the types of `req.query`, `req.params`, `req.headers`, `req.body`.
 
 const errorRequestHandler: ErrorRequestHandler = (err, req, res, next) => {
   if (err instanceof OpenAPIKitValidationError) {

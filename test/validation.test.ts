@@ -1,4 +1,4 @@
-import { validateAddPetRequestBody } from 'openapi-validation-kit-test-output'
+import { validateAddPetRequestBody } from './out'
 
 describe('Foo TODO', () => {
   test('it TODO', () => {

@@ -4,3 +4,6 @@ node_modules
 
 # Compiled code output
 dist
+
+# CLI test output
+out

@@ -5,9 +5,9 @@
   "type": "module",
   "bin": "./dist/index.js",
   "scripts": {
-    "clean": "rimraf ./dist && rimraf ./node_modules/openapi-validation-kit-test-output",
+    "clean": "rimraf ./dist && rimraf ./test/out",
     "compile:cli": "tsc",
-    "compile:example": "node dist/index.js compile --fast ./test/petstore.json ./node_modules/openapi-validation-kit-test-output",
+    "compile:example": "node dist/index.js compile --fast ./test/petstore.json ./test/out",
     "compile": "npm run clean && npm run compile:cli && npm run compile:example",
     "test:test-types": "tsc --project ./test/tsconfig.json",
     "test:run": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js",
